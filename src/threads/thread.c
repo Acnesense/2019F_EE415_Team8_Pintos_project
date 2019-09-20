@@ -28,6 +28,10 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
+/* List of processes in Sleep state, that is processes
+   that slept when timer_sleep function was called */
+static struct list sleep_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -92,6 +96,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init (&sleep_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -211,6 +216,30 @@ thread_create (const char *name, int priority,
   thread_unblock (t);
 
   return tid;
+}
+
+/* Sleep the currnet running thread when timer sleep is called.
+   Thread saves wake up tick variable with start + tick.
+   It will be used when wake up function */
+
+void
+thread_sleep (int64_t ticks)
+{
+  struct thread *t;
+  t = thread_current();
+  
+  enum intr_level old_level;
+  old_level = intr_disable();
+
+  t->wake_up_ticks = ticks;
+
+  /* push thread to sleep list */
+  list_push_back(&sleep_list, &t->elem);
+  
+  thread_block();
+
+  intr_set_level(old_level);
+
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
