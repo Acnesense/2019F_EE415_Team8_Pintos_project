@@ -218,8 +218,33 @@ thread_create (const char *name, int priority,
   return tid;
 }
 
+/* wake up sleeping threads whose wake_up_ticks are expired
+   in sleep list. and remove it from sleep list
+   */
+
+void
+thread_awake (int64_t ticks)
+{
+  struct list_elem *e;
+  e = list_begin(&sleep_list);
+  while(e != list_end(&sleep_list)){
+    struct thread *t = list_entry(e, struct thread, elem);
+
+    if (t->wake_up_ticks <= ticks) {
+      e = list_remove(&t->elem);
+      thread_unblock(t);
+    }
+    else {
+      e = list_next(e);
+    }
+
+  }
+
+}
+
+
 /* Sleep the currnet running thread when timer sleep is called.
-   Thread saves wake up tick variable with start + tick.
+   Thread saves wake_up_tick variable with start + tick.
    It will be used when wake up function */
 
 void
@@ -239,8 +264,9 @@ thread_sleep (int64_t ticks)
   thread_block();
 
   intr_set_level(old_level);
-
 }
+
+
 
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
