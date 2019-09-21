@@ -415,16 +415,20 @@ thread_set_priority (int new_priority)
   if(thread_current()->wait_on_lock)
   {
 	  struct thread* dum=thread_current();
-	  while(dum->wait_on_lock)
+	  int new_prio=new_priority;
+	  while(dum->wait_on_lock!=NULL)
 	  {
 		  dum=dum->wait_on_lock->holder;
-		  dum->priority=(new_priority>dum->ori_prio) ?
-		  new_priority : dum->ori_prio;
+		  int dum_prio=dum->priority;
+		  dum->priority=(new_prio>dum->ori_prio) ?
+		  new_prio : dum->ori_prio;
 		  dum->priority=
 			(dum->priority>list_entry(&(dum->donations.head),
 				struct thread,d_elem)->priority)?
 			dum->priority : list_entry(&(dum->donations.head),
-				struct thread,d_elem)->priority;		  
+				struct thread,d_elem)->priority;
+		  if(dum->priority==dum_prio) break;
+		  new_prio=dum->priority;
 	  }
   }
   if(!list_empty(&ready_list)&&new_priority<
