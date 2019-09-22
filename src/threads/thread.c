@@ -214,6 +214,9 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
+  if (thread_current()->priority < t->priority) {
+    thread_yield();
+  }
 
   return tid;
 }
@@ -266,6 +269,13 @@ thread_sleep (int64_t ticks)
   intr_set_level(old_level);
 }
 
+static bool
+comp_priority(const struct list_elem *a,
+                const struct list_elem *b, void *aux UNUSED)
+{
+  return (list_entry(a, struct thread, elem)->priority
+        > list_entry(b, struct thread, elem)->priority);
+}
 
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -301,7 +311,8 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  // list_push_back (&ready_list, &t->elem);
+  list_insert_ordered(&ready_list, &t->elem, comp_priority, 0);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -372,7 +383,8 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    // list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list, &cur->elem, comp_priority, 0);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
