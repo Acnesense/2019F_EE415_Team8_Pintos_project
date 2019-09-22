@@ -1,5 +1,5 @@
 #include "threads/thread.h"
-#include <debug.h>
+#include <debug.h> 
 #include <stddef.h>
 #include <random.h>
 #include <stdio.h>
@@ -421,6 +421,7 @@ thread_set_priority (int new_priority)
 	  {
 		  dum=dum->wait_on_lock->holder;
 		  int dum_prio=dum->priority;
+<<<<<<< HEAD
 		  dum->priority=(new_prio>dum->priority) ?
 		  new_prio : dum->priority;
 		  int max_prio=list_entry(list_begin(&(dum->donations)),
@@ -428,6 +429,15 @@ thread_set_priority (int new_priority)
 		  dum->priority=
 			(dum->priority>max_prio)?
 			dum->priority : max_prio;
+=======
+		  dum->priority=(new_prio>dum->ori_prio) ?
+		  new_prio : dum->ori_prio;
+		  dum->priority=
+			(dum->priority>list_entry(&(dum->donations.head),
+				struct thread,d_elem)->priority)?
+			dum->priority : list_entry(&(dum->donations.head),
+				struct thread,d_elem)->priority;
+>>>>>>> 6c7b9ff994c056e4cf90304401d3156ceb9c9be6
 		  if(dum->priority==dum_prio) break;
 		  new_prio=dum->priority;
 	  }
