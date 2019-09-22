@@ -1,5 +1,5 @@
 #include "threads/thread.h"
-#include <debug.h> 
+#include <debug.h>
 #include <stddef.h>
 #include <random.h>
 #include <stdio.h>
@@ -276,6 +276,16 @@ comp_priority(const struct list_elem *a,
 	> list_entry(b, struct thread, elem)->priority);
 }
 
+/*Compare the priority of two thread in list 
+	and return with d_elem*/
+static bool 
+comp_priority_d(const struct list_elem *a, 
+			const struct list_elem *b,void *aux UNUSED)
+{
+	return (list_entry(a, struct thread, d_elem)->priority
+	> list_entry(b, struct thread, d_elem)->priority);
+}
+
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
 
@@ -416,30 +426,17 @@ thread_set_priority (int new_priority)
   if(thread_current()->wait_on_lock)
   {
 	  struct thread* dum=thread_current();
-	  int new_prio=new_priority;
 	  while(dum->wait_on_lock!=NULL)
 	  {
 		  dum=dum->wait_on_lock->holder;
 		  int dum_prio=dum->priority;
-<<<<<<< HEAD
-		  dum->priority=(new_prio>dum->priority) ?
-		  new_prio : dum->priority;
-		  int max_prio=list_entry(list_begin(&(dum->donations)),
+		  int max_prio=list_entry(list_max(&(dum->donations),
+				comp_priority_d,0),
 				struct thread,d_elem)->priority;
 		  dum->priority=
-			(dum->priority>max_prio)?
-			dum->priority : max_prio;
-=======
-		  dum->priority=(new_prio>dum->ori_prio) ?
-		  new_prio : dum->ori_prio;
-		  dum->priority=
-			(dum->priority>list_entry(&(dum->donations.head),
-				struct thread,d_elem)->priority)?
-			dum->priority : list_entry(&(dum->donations.head),
-				struct thread,d_elem)->priority;
->>>>>>> 6c7b9ff994c056e4cf90304401d3156ceb9c9be6
+			(dum_prio > max_prio)?
+			dum_prio : max_prio;
 		  if(dum->priority==dum_prio) break;
-		  new_prio=dum->priority;
 	  }
   }
   intr_set_level (old_level);
