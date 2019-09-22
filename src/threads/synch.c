@@ -53,6 +53,16 @@ comp_priority(const struct list_elem *a,
 	> list_entry(b, struct thread, elem)->priority);
 }
 
+/*Compare the priority of two thread in list 
+	and return with d_elem*/
+static bool 
+comp_priority_d(const struct list_elem *a, 
+			const struct list_elem *b,void *aux UNUSED)
+{
+	return (list_entry(a, struct thread, d_elem)->priority
+	> list_entry(b, struct thread, d_elem)->priority);
+}
+
 void
 sema_init (struct semaphore *sema, unsigned value) 
 {
@@ -81,7 +91,8 @@ sema_down (struct semaphore *sema)
   while (sema->value == 0) 
     {
       //list_push_back (&sema->waiters, &thread_current ()->elem);
-	  list_insert_ordered(&sema->waiters, &thread_current()->elem, comp_priority,0);
+	  list_insert_ordered(&sema->waiters, 
+			&thread_current()->elem, comp_priority,0);
       thread_block ();
     }
   sema->value--;
@@ -215,28 +226,31 @@ lock_acquire (struct lock *lock)
   enum intr_level old_level;
   old_level = intr_disable();
   
-  struct thread * dum=lock->holder;
-  struct thread * dum2=thread_current();
-  if(dum)
+  struct thread * lock_holder=lock->holder;
+  struct thread * dum=thread_current();
+  if(lock_holder)
   {
-	  dum2->wait_on_lock=lock;
-	  list_insert_ordered(&(dum->donations),
-			&(dum2->d_elem),comp_priority,0);
-	  if(list_empty(&(dum2->donations))) 
-		  dum2->ori_prio=dum2->priority;
-	  int new_prio=dum2->priority;
-	  while(dum2->wait_on_lock!=NULL)
+	  dum->wait_on_lock=lock;
+	  if(list_empty(&(lock_holder->donations))) 
+		  lock_holder->ori_prio=lock_holder->priority;
+	  list_insert_ordered(&(lock_holder->donations),
+		&(dum->d_elem),comp_priority_d,0);
+	  int new_prio=dum->priority;
+	  while(lock_holder->wait_on_lock!=NULL)
 	  {	
-		  dum2=dum2->wait_on_lock->holder;
-		  int dum_prio=dum2->priority;
-		  dum2->priority=(new_prio>dum2->priority) ?
-		  new_prio : dum2->priority;
-		  int max_prio=list_entry(list_begin(&(dum->donations)),
-				struct thread,d_elem)->priority;
-		  dum2->priority=(dum2->priority>max_prio)?
-			dum2->priority : max_prio;
-		  if(dum2->priority==dum_prio) break;
-		  new_prio=dum2->priority;
+		  lock_holder=lock_holder->wait_on_lock->holder;
+		  int lock_prio_bef=lock_holder->priority;
+		  lock_holder->priority=
+			(new_prio > lock_holder->ori_prio) ?
+			new_prio : lock_holder->ori_prio;
+		  int max_prio=
+			list_entry(list_begin(&(lock_holder->donations)),
+			struct thread,d_elem)->priority;
+		  lock_holder->priority=
+			(lock_holder->priority>max_prio)?
+			lock_holder->priority : max_prio;
+		  if(lock_holder->priority==lock_prio_bef) break;
+		  new_prio=lock_holder->priority;
 	  }
   }
   intr_set_level (old_level);
@@ -297,7 +311,7 @@ lock_release (struct lock *lock)
 		  dum=list_next(dum);
 	  }
   }
-  lock->holder->priority=max_prio;
+  thread_set_priority (max_prio); 
   lock->holder = NULL;
   intr_set_level (old_level);
   sema_up (&lock->semaphore);

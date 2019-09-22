@@ -423,11 +423,11 @@ thread_set_priority (int new_priority)
 		  int dum_prio=dum->priority;
 		  dum->priority=(new_prio>dum->priority) ?
 		  new_prio : dum->priority;
-		  dum->priority=
-			(dum->priority>list_entry(&(dum->donations.head),
-				struct thread,d_elem)->priority)?
-			dum->priority : list_entry(&(dum->donations.head),
+		  int max_prio=list_entry(list_begin(&(dum->donations)),
 				struct thread,d_elem)->priority;
+		  dum->priority=
+			(dum->priority>max_prio)?
+			dum->priority : max_prio;
 		  if(dum->priority==dum_prio) break;
 		  new_prio=dum->priority;
 	  }
@@ -564,12 +564,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->ori_prio=priority;
   t->wait_on_lock=NULL;
-  t->donations.head.prev=NULL;
-  t->donations.head.next=NULL;
-  t->donations.tail.prev=NULL;
-  t->donations.tail.next=NULL;
-  t->d_elem.prev=NULL;
-  t->d_elem.next=NULL;
+  t->donations.head.next=&(t->donations.tail);
+  t->donations.tail.prev=&(t->donations.head);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }
