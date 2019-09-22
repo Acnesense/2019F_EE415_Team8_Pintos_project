@@ -423,6 +423,7 @@ thread_set_priority (int new_priority)
   enum intr_level old_level;
   old_level = intr_disable();
   thread_current ()->priority = new_priority;
+  thread_current ()->ori_prio=new_priority;
   if(thread_current()->wait_on_lock)
   {
 	  struct thread* dum=thread_current();
