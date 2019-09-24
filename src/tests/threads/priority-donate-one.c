@@ -25,10 +25,8 @@ test_priority_donate_one (void)
 
   /* This test does not work with the MLFQS. */
   ASSERT (!thread_mlfqs);
-
   /* Make sure our priority is the default. */
   ASSERT (thread_get_priority () == PRI_DEFAULT);
-
   lock_init (&lock);
   lock_acquire (&lock);
   thread_create ("acquire1", PRI_DEFAULT + 1, acquire1_thread_func, &lock);
@@ -46,7 +44,6 @@ static void
 acquire1_thread_func (void *lock_) 
 {
   struct lock *lock = lock_;
-
   lock_acquire (lock);
   msg ("acquire1: got the lock");
   lock_release (lock);

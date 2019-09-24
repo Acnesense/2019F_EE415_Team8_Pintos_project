@@ -559,10 +559,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->ori_prio=priority;
   t->wait_on_lock=NULL;
-  t->donations.head.prev=NULL;
-  t->donations.head.next=NULL;
-  t->donations.tail.prev=NULL;
-  t->donations.tail.next=NULL;
+  list_init(&t->donations);
   t->d_elem.prev=NULL;
   t->d_elem.next=NULL;
   t->magic = THREAD_MAGIC;
