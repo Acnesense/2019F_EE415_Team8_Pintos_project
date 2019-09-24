@@ -411,7 +411,9 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  thread_current ()->ori_prio = thread_current ()->priority;
   thread_current ()->priority = new_priority;
+
 }
 
 /* Returns the current thread's priority. */
@@ -536,6 +538,11 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->ori_prio = priority;
+  t->wait_on_lock = NULL;
+// donation list는 initialize 해줘야 함?
+  t->donations.head.next=&(t->donations.tail);
+  t->donations.tail.prev=&(t->donations.head);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }
