@@ -225,8 +225,9 @@ lock_acquire (struct lock *lock)
     {
         dum=dum->wait_on_lock->holder;
         int dum_prio_bef = dum->priority;
-        dum->priority = (dum_prio_bef > new_prio)
-            ? dum_prio_bef : new_prio;
+        if (dum_prio_bef < new_prio)
+          thread_priority_donation(new_prio, dum->priority);
+
         if (new_prio == dum->priority) break;
         new_prio = dum->priority;
     }

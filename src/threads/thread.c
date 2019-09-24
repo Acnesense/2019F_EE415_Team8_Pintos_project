@@ -221,6 +221,21 @@ thread_create (const char *name, int priority,
   return tid;
 }
 
+void
+thread_priority_donation (int new_priority, struct thread *t)
+{
+  t->priority = new_priority;
+
+  if (t == thread_current() && !list_empty(&ready_list))
+  {
+    struct thread *first = list_entry(list_begin(&ready_list), struct thread, elem);
+    if (first != NULL && first->priority > t->priority)
+      {
+        thread_yield();
+      }
+  }
+}
+
 /* wake up sleeping threads whose wake_up_ticks are expired
    in sleep list. and remove it from sleep list
    */
