@@ -268,7 +268,11 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   struct list_elem* dum = list_begin(&(lock->holder->donations));
+  struct thread *t_current = thread_current();
+
   int max_prio = lock->holder->ori_prio;
+
+  sema_up (&lock->semaphore);
 
   while(dum && dum != list_end(&(lock->holder->donations)))
   {
@@ -283,9 +287,8 @@ lock_release (struct lock *lock)
 	  dum = list_next(dum);
 	}
   }
-  thread_priority_donation(max_prio, thread_current());
   lock->holder = NULL;
-  sema_up (&lock->semaphore);
+  thread_priority_donation(max_prio, t_current);
 }
 
 /* Returns true if the current thread holds LOCK, false
@@ -372,7 +375,6 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
 
   if (!list_empty (&cond->waiters)) 
     list_sort(&cond->waiters, comp_priority, 0);
-    // semaphore 값 줄여주는 부분 이해가 안감
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct thread, elem)->wait_on_lock->semaphore);
 }

@@ -43,7 +43,6 @@ test_priority_donate_one (void)
 static void
 acquire1_thread_func (void *lock_) 
 {
-  msg("acquire1\n");
   struct lock *lock = lock_;
   lock_acquire (lock);
   msg ("acquire1: got the lock");
@@ -54,11 +53,10 @@ acquire1_thread_func (void *lock_)
 static void
 acquire2_thread_func (void *lock_) 
 {
-  msg("acquire2\n");
   struct lock *lock = lock_;
-
   lock_acquire (lock);
   msg ("acquire2: got the lock");
   lock_release (lock);
   msg ("acquire2: done");
 }
+
