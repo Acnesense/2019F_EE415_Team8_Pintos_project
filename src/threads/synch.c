@@ -270,7 +270,7 @@ lock_release (struct lock *lock)
   struct list_elem* dum = list_begin(&(lock->holder->donations));
   struct thread *t_current = thread_current();
 
-  int max_prio = lock->holder->ori_prio;
+  int max_prio = lock->holder->original_priority;
 
   sema_up (&lock->semaphore);
 

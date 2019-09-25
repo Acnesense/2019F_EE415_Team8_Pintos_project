@@ -427,23 +427,20 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->ori_prio = thread_current ()->priority;
-  thread_current ()->priority = new_priority;
-  if(thread_current()->wait_on_lock)
+  
+  struct thread *t_current = thread_current();
+  int original_priority = t_current->original_priority;
+  int priority = t_current->priority;
+
+  if (original_priority == priority)
   {
-	  struct thread* dum=thread_current();
-	  while(dum->wait_on_lock)
-	  {
-		  dum=dum->wait_on_lock->holder;
-		  dum->priority=(new_priority>dum->ori_prio) ?
-		  new_priority : dum->ori_prio;
-		  dum->priority=
-			(dum->priority>list_entry(&(dum->donations.head),
-				struct thread,d_elem)->priority)?
-			dum->priority : list_entry(&(dum->donations.head),
-				struct thread,d_elem)->priority;		  
-	  }
+    t_current->original_priority = new_priority;
+    t_current->priority = new_priority;
   }
+  else
+    t_current->original_priority = new_priority;
+  
+  
   if(!list_empty(&ready_list)&&new_priority<
 	list_entry(list_front(&ready_list),struct thread, elem)
 	->priority)
@@ -572,7 +569,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
-  t->ori_prio = priority;
+  t->original_priority = priority;
   t->wait_on_lock=NULL;
   list_init(&t->donations);
   t->d_elem.prev=NULL;
