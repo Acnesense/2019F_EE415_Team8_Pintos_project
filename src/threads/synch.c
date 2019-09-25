@@ -224,11 +224,10 @@ lock_acquire (struct lock *lock)
     while(dum->wait_on_lock!=NULL)
     {
         dum=dum->wait_on_lock->holder;
-        int dum_prio_bef = dum->priority;
-        if (dum_prio_bef < new_prio)
-          thread_priority_donation(new_prio, dum->priority);
+        if (dum->priority < new_prio)
+          thread_priority_donation(new_prio, dum);
 
-        if (new_prio == dum->priority) break;
+        else break;
         new_prio = dum->priority;
     }
   }
@@ -284,7 +283,7 @@ lock_release (struct lock *lock)
 	  dum = list_next(dum);
 	}
   }
-
+  thread_priority_donation(max_prio, thread_current());
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
