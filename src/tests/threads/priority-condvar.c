@@ -51,3 +51,15 @@ priority_condvar_thread (void *aux UNUSED)
   msg ("Thread %s woke up.", thread_name ());
   lock_release (&lock);
 }
+
+void
+example1(void)
+{
+  printf("example1\n");
+}
+
+void
+example2(void)
+{
+  printf("example2\n");
+}
