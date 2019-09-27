@@ -422,15 +422,16 @@ thread_set_priority (int new_priority)
 {
   enum intr_level old_level;
   old_level = intr_disable();
-  thread_current ()->priority = new_priority;
-  thread_current ()->ori_prio=new_priority;
+  struct thread* dum=thread_current();
+  if(dum->ori_prio==dum->priority) dum->priority=new_priority;
+  dum->ori_prio=new_priority;
+ 
   if(thread_current()->wait_on_lock)
   {
-	  struct thread* dum=thread_current();
 	  while(dum->wait_on_lock!=NULL)
 	  {
 		  dum=dum->wait_on_lock->holder;
-		  int dum_prio=dum->priority;
+		  int dum_prio=dum->ori_prio;
 		  int max_prio=list_entry(list_max(&(dum->donations),
 				comp_priority_d,0),
 				struct thread,d_elem)->priority;
@@ -442,7 +443,7 @@ thread_set_priority (int new_priority)
   }
   intr_set_level (old_level);
 
-  if(!list_empty(&ready_list)&&new_priority<
+  if(!list_empty(&ready_list)&&thread_current()->priority<
 	list_entry(list_front(&ready_list),struct thread, elem)
 	->priority)
 	thread_yield();
@@ -572,8 +573,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->ori_prio=priority;
   t->wait_on_lock=NULL;
-  t->donations.head.next=&(t->donations.tail);
-  t->donations.tail.prev=&(t->donations.head);
+  list_init(&t->donations);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }

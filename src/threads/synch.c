@@ -52,13 +52,14 @@ comp_priority(const struct list_elem *a,
 	> list_entry(b, struct thread, elem)->priority);
 }
 
+
 void
 sema_init (struct semaphore *sema, unsigned value) 
 {
   ASSERT (sema != NULL);
 
   sema->value = value;
-  list_init (&sema->waiters);
+  list_init(&sema->waiters);
 }
 
 /* Down or "P" operation on a semaphore.  Waits for SEMA's value
@@ -127,13 +128,14 @@ sema_up (struct semaphore *sema)
 
   old_level = intr_disable ();
   
+  sema->value++;
   if (!list_empty (&sema->waiters))
   {	  
 	list_sort(&sema->waiters, comp_priority, 0);
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
+	thread_yield();
   }
-  sema->value++;
   intr_set_level (old_level);
  
 }
@@ -313,7 +315,17 @@ struct semaphore_elem
   {
     struct list_elem elem;              /* List element. */
     struct semaphore semaphore;         /* This semaphore. */
+	int prio;
   };
+
+/*Compare the priority of two semaphore_elem in list and return*/
+static bool 
+comp_priority_cond(const struct list_elem *a, 
+			const struct list_elem *b,void *aux UNUSED)
+{
+	return (list_entry(a, struct semaphore_elem, elem)->prio
+	> list_entry(b, struct semaphore_elem, elem)->prio);
+}
 
 /* Initializes condition variable COND.  A condition variable
    allows one piece of code to signal a condition and cooperating
@@ -356,10 +368,13 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
   
+  waiter.elem.prev=NULL;
+  waiter.elem.next=NULL;
   sema_init (&waiter.semaphore, 0);
-  list_push_back (&cond->waiters, &waiter.elem);
+  waiter.prio=thread_current()->priority;
+  //list_push_back (&cond->waiters, &waiter.elem);
 
-  //list_insert_ordered(&cond->waiters, &thread_current()->elem,comp_priority, 0);
+  list_insert_ordered(&cond->waiters, &waiter.elem,comp_priority_cond, 0);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
@@ -382,10 +397,10 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
 
   if (!list_empty (&cond->waiters))
   {	  
-	list_sort(&cond->waiters, comp_priority, 0);
+	list_sort(&cond->waiters, comp_priority_cond, 0);
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);
-						  //struct thread, elem)->wait_on_lock->semaphore);
+	
   }
 }
 
