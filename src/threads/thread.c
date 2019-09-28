@@ -330,9 +330,12 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
   list_insert_ordered(&ready_list, &t->elem, comp_priority, 0);
   t->status = THREAD_READY;
-  if (thread_current() != idle_thread && 
-      thread_current()->priority < t-> priority)
-    thread_yield();
+  // if (!thread_mlfqs){
+  //   if (thread_current() != idle_thread && 
+  //       thread_current()->priority < t-> priority)
+  //     thread_yield();
+  // }
+
   intr_set_level (old_level);
 }
 
@@ -468,10 +471,10 @@ thread_set_nice (int nice)
   enum intr_level old_level = intr_disable();
   thread_current()->nice=nice;
   intr_set_level (old_level);
-  if(!list_empty(&ready_list)&&thread_current()->priority<
-	list_entry(list_front(&ready_list),struct thread, elem)
-	->priority)
-	thread_yield();
+  // if(!list_empty(&ready_list)&&thread_current()->priority<
+	// list_entry(list_front(&ready_list),struct thread, elem)
+	// ->priority)
+	// thread_yield();
 
 }
 
