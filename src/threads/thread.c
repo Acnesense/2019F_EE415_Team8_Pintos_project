@@ -63,6 +63,8 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
+/* load_avg for mlfqs */
+int load_avg;
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -115,7 +117,7 @@ thread_start (void)
   struct semaphore idle_started;
   sema_init (&idle_started, 0);
   thread_create ("idle", PRI_MIN, idle, &idle_started);
-
+  load_avg=0;
   /* Start preemptive thread scheduling. */
   intr_enable ();
 
@@ -420,6 +422,8 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  if(!thread_mlfqs)
+  {
   enum intr_level old_level;
   old_level = intr_disable();
   struct thread* dum=thread_current();
@@ -447,6 +451,7 @@ thread_set_priority (int new_priority)
 	list_entry(list_front(&ready_list),struct thread, elem)
 	->priority)
 	thread_yield();
+  }
 }
 
 /* Returns the current thread's priority. */
@@ -458,34 +463,73 @@ thread_get_priority (void)
 
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED) 
+thread_set_nice (int nice) 
 {
-  /* Not yet implemented. */
+  enum intr_level old_level = intr_disable();
+  thread_current()->nice=nice;
+  intr_set_level (old_level);
+  if(!list_empty(&ready_list)&&thread_current()->priority<
+	list_entry(list_front(&ready_list),struct thread, elem)
+	->priority)
+	thread_yield();
+
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
-{
-  /* Not yet implemented. */
-  return 0;
+{  
+  enum intr_level old_level = intr_disable();
+  int nice=thread_current()->nice;  
+  intr_set_level (old_level);
+  return nice;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  enum intr_level old_level = intr_disable();
+  int dum=(load_avg*100+FIXED1/2)/FIXED1;
+  intr_set_level (old_level);
+  return dum;
 }
 
+/* set load average */
+void
+thread_set_load_avg(int a)
+{
+	load_avg=a;
+}
+	
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  enum intr_level old_level = intr_disable();
+  int dum=(thread_current()->recent_cpu*100+FIXED1/2)/FIXED1;
+  intr_set_level (old_level);
+  return dum;
 }
+
+/* return size of ready_list */
+int
+thread_ready_threads(void)
+{
+  enum intr_level old_level = intr_disable();
+  int dum=(int) list_size(&ready_list);
+  if(thread_current()!= idle_thread) dum++;
+  intr_set_level (old_level);
+  return dum;
+}
+
+/* return all_list */
+struct list *
+thread_all_list(void)
+{
+	return &all_list;
+}
+
 
 /* Idle thread.  Executes when no other thread is ready to run.
 
@@ -576,6 +620,8 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->donations);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
+  t->nice=0;
+  t->recent_cpu=0;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

@@ -24,6 +24,8 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* 1 for fixed point arithmetic*/
+#define FIXED1 16384
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -97,6 +99,9 @@ struct thread
 	struct lock *wait_on_lock;	/* lock that thread is waiting */
 	struct list donations;		/* list for multiple donations */
 	struct list_elem d_elem;/* list element for multiple donation */
+	int nice;
+	int recent_cpu;
+	
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -143,5 +148,7 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-
+void thread_set_load_avg(int);
+int thread_ready_threads(void);
+struct list* thread_all_list(void);
 #endif /* threads/thread.h */
