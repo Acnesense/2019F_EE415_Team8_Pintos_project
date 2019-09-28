@@ -62,7 +62,7 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
-
+int load_avg;
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -115,7 +115,7 @@ thread_start (void)
   struct semaphore idle_started;
   sema_init (&idle_started, 0);
   thread_create ("idle", PRI_MIN, idle, &idle_started);
-
+  load_avg=0;
   /* Start preemptive thread scheduling. */
   intr_enable ();
 
@@ -475,9 +475,29 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  enum intr_level old_level = intr_disable();
+  int dum=(load_avg*100+FIXED/2)/FIXED;
+  intr_set_level (old_level);
+  return dum;
 }
+
+void
+thread_set_load_avg (int a)
+{
+  load_avg = a;
+}
+
+int
+thread_ready_threads(void)
+{
+  enum intr_level old_level = intr_disable();
+  int dum=(int) list_size(&ready_list);
+  if(thread_current()!= idle_thread) dum++;
+  intr_set_level (old_level);
+  return dum;
+}
+
+
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
@@ -693,3 +713,4 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
