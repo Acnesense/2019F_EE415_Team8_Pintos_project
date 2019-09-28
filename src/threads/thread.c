@@ -470,7 +470,6 @@ thread_get_nice (void)
   /* Not yet implemented. */
   return 0;
 }
-
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
@@ -481,10 +480,20 @@ thread_get_load_avg (void)
   return dum;
 }
 
-void
-thread_set_load_avg (int a)
+/* return load average times FIXED1*/
+int
+thread_get_load_avg_long (void) 
 {
-  load_avg = a;
+  enum intr_level old_level = intr_disable();
+  int dum=load_avg;
+  intr_set_level (old_level);
+  return dum;
+}
+/* set load average */
+void
+thread_set_load_avg(int a)
+{
+	load_avg=a;
 }
 
 int
@@ -496,7 +505,7 @@ thread_ready_threads(void)
   intr_set_level (old_level);
   return dum;
 }
-
+	
 
 
 /* Returns 100 times the current thread's recent_cpu value. */
