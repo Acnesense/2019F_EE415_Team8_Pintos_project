@@ -171,30 +171,31 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
-  int64_t dum=ticks; 
   ticks++;
   thread_tick ();
   if(thread_mlfqs)
   {
 	thread_current()->recent_cpu+=FIXED1;
-	if(ticks/TIMER_FREQ - dum/TIMER_FREQ)
+	if(ticks%TIMER_FREQ==0)
 	{
-		thread_set_load_avg(thread_get_load_avg()*FIXED1/100*59/60+
+		thread_set_load_avg(thread_get_load_avg_long()*59/60+
 			thread_ready_threads()*FIXED1/60);
 		struct list *al=thread_all_list();
 		for (struct list_elem *e = list_begin (al); 
 				e != list_end (al);e = list_next (e))
 		{
 			struct thread* dm=list_entry(e,struct thread, allelem);
-			dm->recent_cpu=(2*thread_get_load_avg())/
-				(2*thread_get_load_avg()+100)*dm->recent_cpu
+			dm->recent_cpu=2*thread_get_load_avg()*dm->recent_cpu/
+				(2*thread_get_load_avg()+100)
 				+dm->nice*FIXED1;
 			dm->priority=PRI_MAX-dm->recent_cpu/(4*FIXED1)-2*dm->nice;
 		}
 	}
-	if(ticks/4-dum/4)
+	if(ticks%4==0)
+	{
 		thread_current()->priority=PRI_MAX-thread_get_recent_cpu()/
-			(4*FIXED1)-2*thread_get_nice();
+			(4*100)-2*thread_get_nice();
+	}
   }
   thread_awake(ticks);
 }

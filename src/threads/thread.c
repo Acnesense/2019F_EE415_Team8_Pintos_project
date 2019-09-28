@@ -495,6 +495,15 @@ thread_get_load_avg (void)
   return dum;
 }
 
+/* return load average times FIXED1*/
+int
+thread_get_load_avg_long (void) 
+{
+  enum intr_level old_level = intr_disable();
+  int dum=load_avg;
+  intr_set_level (old_level);
+  return dum;
+}
 /* set load average */
 void
 thread_set_load_avg(int a)
