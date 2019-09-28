@@ -117,7 +117,6 @@ test_mlfqs_load_60 (void)
   int i;
   
   ASSERT (thread_mlfqs);
-
   start_time = timer_ticks ();
   msg ("Starting %d niced load threads...", THREAD_CNT);
   for (i = 0; i < THREAD_CNT; i++) 
@@ -152,4 +151,10 @@ load_thread (void *aux UNUSED)
   while (timer_elapsed (start_time) < spin_time)
     continue;
   timer_sleep (exit_time - timer_elapsed (start_time));
+}
+
+void
+example(void)
+{
+  printf("example");
 }

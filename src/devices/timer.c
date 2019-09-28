@@ -93,8 +93,6 @@ timer_sleep (int64_t ticks)
 
   ASSERT (intr_get_level () == INTR_ON);
   thread_sleep( start + ticks );
-  //while (timer_elapsed (start) < ticks) 
-  //  thread_yield ();
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -173,6 +171,44 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  thread_awake(ticks);
+    if(thread_mlfqs)
+  {
+	thread_current()->recent_cpu+=FIXED1;
+	if(ticks%TIMER_FREQ==0)
+	{
+    printf("%d \n", ticks);
+		thread_set_load_avg(thread_get_load_avg_long()*59/60+
+			thread_ready_threads()*FIXED1/60);
+		struct list *al=thread_all_list();
+    // struct list_elem *e = list_begin(al);
+    // while(e != list_end(al)){
+    //   struct thread* dm=list_entry(e,struct thread, allelem);
+		// 	dm->recent_cpu=2*thread_get_load_avg()*dm->recent_cpu/
+		// 		(2*thread_get_load_avg()+100)
+		// 		+dm->nice*FIXED1;
+		// 	// dm->priority=PRI_MAX-dm->recent_cpu/(4*FIXED1)-2*dm->nice;
+      
+		// 	// dm->priority=PRI_MAX-dm->recent_cpu/(4*FIXED1)-2*dm->nice;
+    //   e = list_next(e);
+    // }
+		// for (struct list_elem *e = list_begin (al); 
+		// 		e != list_end (al);e = list_next (e))
+		// {
+		// 	struct thread* dm=list_entry(e,struct thread, allelem);
+		// 	dm->recent_cpu=2*thread_get_load_avg()*dm->recent_cpu/
+		// 		(2*thread_get_load_avg()+100)
+		// 		+dm->nice*FIXED1;
+		// 	dm->priority=PRI_MAX-dm->recent_cpu/(4*FIXED1)-2*dm->nice;
+		// }
+	}
+	// if(ticks%4==0)
+	// {
+	// 	thread_current()->priority=PRI_MAX-thread_get_recent_cpu()/
+	// 		(4*FIXED1)-2*thread_get_nice();
+	// 		(4*100)-2*thread_get_nice();
+	// }
+  }
   thread_awake(ticks);
 }
 
