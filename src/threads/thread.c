@@ -116,7 +116,6 @@ thread_start (void)
   sema_init (&idle_started, 0);
   thread_create ("idle", PRI_MIN, idle, &idle_started);
   load_avg=0;
-
   /* Start preemptive thread scheduling. */
   intr_enable ();
 
@@ -484,7 +483,6 @@ thread_get_nice (void)
   intr_set_level (old_level);
   return nice;
 }
-
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
@@ -747,3 +745,4 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
