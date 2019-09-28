@@ -171,6 +171,14 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  if(thread_mlfqs)
+  {
+    if(ticks % TIMER_FREQ == 0)
+    {
+      thread_set_load_avg(thread_get_load_avg_long()*59/60+
+            thread_ready_threads()*FIXED/60);
+    }
+  }
   thread_awake(ticks);
     if(thread_mlfqs)
   {
