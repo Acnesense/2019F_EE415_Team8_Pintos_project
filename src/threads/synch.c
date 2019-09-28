@@ -219,7 +219,7 @@ lock_acquire (struct lock *lock)
   //old_level = intr_disable();
   
   struct thread * dum=thread_current();
-  if(lock->holder)
+  if(!thread_mlfqs && lock->holder)
   {
 	  dum->wait_on_lock=lock;
 	  list_push_back(&(lock->holder->donations),
@@ -274,26 +274,28 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
   
-  
-  struct list_elem* dum=list_begin(&(lock->holder->donations));
-  int max_prio=lock->holder->ori_prio;
-  
-  while(dum&&dum!=list_end(&(lock->holder->donations)))
+  if(!thread_mlfqs)
   {
-	  if(list_entry(dum,struct thread,d_elem)->wait_on_lock==lock)
-	  {
-		  dum=list_remove(dum);
-	  }
-	  else
-	  {
-		  int dum_prio=
-		   list_entry(dum,struct thread, d_elem)->priority;
-		  max_prio=
-		    (max_prio>dum_prio)?max_prio:dum_prio;
-		  dum=list_next(dum);
-	  }
+	struct list_elem* dum=list_begin(&(lock->holder->donations));
+	int max_prio=lock->holder->ori_prio;
+  
+	while(dum&&dum!=list_end(&(lock->holder->donations)))
+	{
+		if(list_entry(dum,struct thread,d_elem)->wait_on_lock==lock)
+		{
+			dum=list_remove(dum);
+		}
+		else
+		{
+			int dum_prio=
+			list_entry(dum,struct thread, d_elem)->priority;
+			max_prio=
+				(max_prio>dum_prio)?max_prio:dum_prio;
+			dum=list_next(dum);
+		}
+	}
+	thread_current()->priority=max_prio;
   }
-  thread_current()->priority=max_prio;	
   lock->holder = NULL;
   sema_up (&lock->semaphore);
   thread_yield();
