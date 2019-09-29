@@ -66,7 +66,7 @@ bool thread_mlfqs;
 
 /* this variable is for advanced scheduler */
 int load_avg;                   /* load average value */
-int f = 16384;                  /* 1 in 17.14 format */
+int fixed = 16384;                  /* 1 in 17.14 format */
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -508,7 +508,7 @@ int
 thread_get_load_avg (void) 
 {
   enum intr_level old_level = intr_disable();
-  int dum=(load_avg*100+f/2)/f;
+  int dum=(load_avg*100+fixed/2)/fixed;
   intr_set_level (old_level);
   return dum;
 }
@@ -518,7 +518,7 @@ int
 thread_get_recent_cpu (void) 
 {
   enum intr_level old_level = intr_disable();
-  int dum=(thread_current()->recent_cpu*100+f/2)/f;
+  int dum=(thread_current()->recent_cpu*100+fixed/2)/fixed;
   intr_set_level (old_level);
   return dum;
 }
@@ -739,17 +739,17 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 int
 int_to_real (int n) {
-  return n*f;
+  return n*fixed;
   }
 
 int
 add_real_and_int (int x, int y) {
-  return x + (y * f);
+  return x + (y * fixed);
   }
 
 int
 multiply_real_and_real (int x, int y) {
-  return ((int64_t) (x)) * y / f;
+  return ((int64_t) (x)) * y / fixed;
   }
 
 
@@ -773,7 +773,7 @@ recent_cpu_change_all(void){
     struct thread* dm=list_entry(e,struct thread, allelem);
     dm->recent_cpu=2*thread_get_load_avg()*dm->recent_cpu/
       (2*thread_get_load_avg()+100)
-      +dm->nice*f;
+      +dm->nice*fixed;
   }
 }
 
@@ -790,7 +790,7 @@ priority_change_all (void) {
 				e != list_end (&all_list);e = list_next (e))
   {
     struct thread* dm=list_entry(e,struct thread, allelem);
-    dm->priority=PRI_MAX-dm->recent_cpu/(4*f)-2*dm->nice;
+    dm->priority=PRI_MAX-dm->recent_cpu/(4*fixed)-2*dm->nice;
   }
 }
 
