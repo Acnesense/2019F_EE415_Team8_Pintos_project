@@ -65,10 +65,8 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 bool thread_mlfqs;
 
 /* this variable is for advanced scheduler */
-int load_avg;
-int real_ready_threads;
-bool initialization;
-int f = 16384;
+int load_avg;                   /* load average value */
+int f = 16384;                  /* 1 in 17.14 format */
 
 static void kernel_thread (thread_func *, void *aux);
 
@@ -106,8 +104,6 @@ thread_init (void)
   list_init (&sleep_list);
 
   load_avg = 0;
-  real_ready_threads = 0;
-  initialization = true;
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -230,6 +226,12 @@ thread_create (const char *name, int priority,
   return tid;
 }
 
+/* 
+donate new priority to thread t. if t is current thread and
+if the first thread`s priority is higher than current thread`s it,
+thread_yield is implemented.
+In mlfqs option, this functions will not implemented
+*/
 void
 thread_priority_donation (int new_priority, struct thread *t)
 {
@@ -295,6 +297,10 @@ thread_sleep (int64_t ticks)
   intr_set_level(old_level);
 }
 
+/*
+compare priority of two threads.
+this is used for list_inserted_order
+*/
 static bool
 comp_priority(const struct list_elem *a,
                 const struct list_elem *b, void *aux UNUSED)
@@ -439,7 +445,10 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
-/* Sets the current thread's priority to NEW_PRIORITY. */
+/* 
+Sets the current thread's priority to NEW_PRIORITY. 
+if original priority and priority are different,  
+*/
 void
 thread_set_priority (int new_priority) 
 {
@@ -734,16 +743,6 @@ int_to_real (int n) {
   }
 
 int
-real_to_int (int n) {
-  return n/f;
-  }
-
-int
-divide_real_by_real (int x, int y) {
-  return ((int64_t) (x)) * f / y;
-  }
-
-int
 add_real_and_int (int x, int y) {
   return x + (y * f);
   }
@@ -753,11 +752,6 @@ multiply_real_and_real (int x, int y) {
   return ((int64_t) (x)) * y / f;
   }
 
-int
-round_real_to_int (int x) {
-  x = (x>=0) ? (x + f/2)/f : (x - f/2)/f;
-  return x;
-}
 
 
 void
@@ -768,15 +762,6 @@ load_avg_change(void) {
       ready_threads += 1;
   load_avg = multiply_real_and_real(int_to_real(59) / 60, load_avg) +
             int_to_real(1) / 60 * ready_threads;
-}
-
-int
-recent_cpu_change(recent_cpu, nice){
-  int load = 2 * load_avg;
-  recent_cpu = add_real_and_int(multiply_real_and_real(
-                divide_real_by_real(load, add_real_and_int(load, 1)), 
-                recent_cpu),nice);
-  return recent_cpu;
 }
 
 /* update recent_cpu of thread in all_list when this function is called */
@@ -807,19 +792,5 @@ priority_change_all (void) {
     struct thread* dm=list_entry(e,struct thread, allelem);
     dm->priority=PRI_MAX-dm->recent_cpu/(4*f)-2*dm->nice;
   }
-}
-
-/* check priority of thread is in the boundary */
-
-int
-priority_bound (int priority) {
-  if (priority < PRI_MIN){
-   priority = PRI_MIN;
-  }
-  else if (priority > PRI_MAX){
-    priority = PRI_MAX;
-  }
-
-  return priority;
 }
 

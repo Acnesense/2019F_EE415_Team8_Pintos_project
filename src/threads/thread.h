@@ -148,16 +148,12 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 int int_to_real (int n);
-int real_to_int (int n);
-int divide_real_by_real (int x, int y);
 int add_real_and_int (int x, int y);
-int multiply_real_and_real (int x, int y);
 int round_real_to_int (int x);
 void load_avg_change(void);
 int recent_cpu_change(int recent_cpu, int nice);
 void recent_cpu_change_all(void);
 int priority_change(int recent_cpu, int nice);
 void priority_change_all(void);
-int priority_bound(int a);
 
 #endif /* threads/thread.h */
