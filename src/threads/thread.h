@@ -1,4 +1,3 @@
-
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
 
@@ -24,14 +23,15 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
-#define FIXED1 16384
 
 /* A kernel thread or user process.
+
    Each thread structure is stored in its own 4 kB page.  The
    thread structure itself sits at the very bottom of the page
    (at offset 0).  The rest of the page is reserved for the
    thread's kernel stack, which grows downward from the top of
    the page (at offset 4 kB).  Here's an illustration:
+
         4 kB +---------------------------------+
              |          kernel stack           |
              |                |                |
@@ -53,18 +53,22 @@ typedef int tid_t;
              |               name              |
              |              status             |
         0 kB +---------------------------------+
+
    The upshot of this is twofold:
+
       1. First, `struct thread' must not be allowed to grow too
          big.  If it does, then there will not be enough room for
          the kernel stack.  Our base `struct thread' is only a
          few bytes in size.  It probably should stay well under 1
          kB.
+
       2. Second, kernel stacks must not be allowed to grow too
          large.  If a stack overflows, it will corrupt the thread
          state.  Thus, kernel functions should not allocate large
          structures or arrays as non-static local variables.  Use
          dynamic allocation with malloc() or palloc_get_page()
          instead.
+
    The first symptom of either of these problems will probably be
    an assertion failure in thread_current(), which checks that
    the `magic' member of the running thread's `struct thread' is
@@ -86,6 +90,8 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
     int64_t wake_up_ticks;               /* remember when thread is waked up */
+    int nice;                            /* nice value of thread */
+    int recent_cpu;                      /* recent cpu of thread */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -93,8 +99,6 @@ struct thread
 	struct lock *wait_on_lock;	/* lock that thread is waiting */
 	struct list donations;		/* list for multiple donations */
 	struct list_elem d_elem;/* list element for multiple donation */
-  	int nice;
-	int recent_cpu;
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -142,8 +146,18 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-void thread_set_load_avg(int);
-int thread_ready_threads(void);
-struct list* thread_all_list(void);
-int thread_get_load_avg_long (void) ;
+
+int int_to_real (int n);
+int real_to_int (int n);
+int divide_real_by_real (int x, int y);
+int add_real_and_int (int x, int y);
+int multiply_real_and_real (int x, int y);
+int round_real_to_int (int x);
+void load_avg_change(void);
+int recent_cpu_change(int recent_cpu, int nice);
+void recent_cpu_change_all(void);
+int priority_change(int recent_cpu, int nice);
+void priority_change_all(void);
+int priority_bound(int a);
+
 #endif /* threads/thread.h */
