@@ -175,14 +175,16 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
   if (thread_mlfqs){
     struct thread *t_current = thread_current();
+    struct list_elem *e;
     t_current->recent_cpu = add_real_and_int(t_current->recent_cpu, 1);
 
     if (ticks % TIMER_FREQ == 0){
       load_avg_change();
-      // recent_cpu_change_all();
+      recent_cpu_change_all();
+      priority_change_all();
     }
     if (ticks % 4 == 0){
-      // priority_change_all();
+      priority_change(t_current->recent_cpu, t_current->nice);
     }
   }
   thread_awake(ticks);

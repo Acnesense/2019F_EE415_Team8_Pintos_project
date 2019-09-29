@@ -247,16 +247,18 @@ thread_create (const char *name, int priority,
 void
 thread_priority_donation (int new_priority, struct thread *t)
 {
-  t->priority = new_priority;
-
-  if (t == thread_current() && !list_empty(&ready_list))
-  {
-    struct thread *first = list_entry(list_begin(&ready_list), struct thread, elem);
-    if (first != NULL && first->priority > t->priority)
+  if(!thread_mlfqs){
+    t->priority = new_priority;
+    if (t == thread_current() && !list_empty(&ready_list))
       {
-        thread_yield();
+        struct thread *first = list_entry(list_begin(&ready_list), struct thread, elem);
+        if (first != NULL && first->priority > t->priority)
+          {
+            thread_yield();
+          }
       }
   }
+  
 }
 
 /* wake up sleeping threads whose wake_up_ticks are expired
@@ -771,15 +773,8 @@ load_avg_change(void) {
   int ready_threads = list_size(&ready_list);
   if(thread_current() != idle_thread)  //to be removed
       ready_threads += 1;
-
-  // real_ready_threads = int_to_real(ready_threads);
-
-  // load_avg = (multiply_real_and_real(load_avg, int_to_real(59))/60) 
-  //             + (real_ready_threads/60);
   load_avg = multiply_real_and_real(int_to_real(59) / 60, load_avg) +
             int_to_real(1) / 60 * ready_threads;
-  // load_avg = thread_get_load_avg()*f/100*59/60+
-	// 		ready_threads*f/60;
 }
 
 int
@@ -792,19 +787,21 @@ recent_cpu_change(recent_cpu, nice){
   return recent_cpu;
 }
 
+/* update recent_cpu of thread in all_list when this function is called */
 void
 recent_cpu_change_all(void){
-  struct list_elem *e;
-  for (e = list_begin (&all_list); e != list_end (&all_list);
-       e = list_next (e))
-    {
-      struct thread *th = list_entry(e, struct thread, elem);
-      th->recent_cpu = recent_cpu_change(th->recent_cpu, th->nice);
-    }
+  for (struct list_elem *e = list_begin (&all_list); 
+				e != list_end (&all_list);e = list_next (e))
+  {
+    struct thread* dm=list_entry(e,struct thread, allelem);
+    dm->recent_cpu=2*thread_get_load_avg()*dm->recent_cpu/
+      (2*thread_get_load_avg()+100)
+      +dm->nice*f;
+  }
 }
 
 
-/* update priority when this function is called */
+/* update priority of thread in all_list when this function is called */
 int
 priority_change (int recent_cpu, int nice) {
   recent_cpu = round_real_to_int(recent_cpu/4);
@@ -815,14 +812,11 @@ priority_change (int recent_cpu, int nice) {
 
 void
 priority_change_all (void) {
-  struct list_elem *e;
-
-  for (e = list_begin (&all_list); e != list_end (&all_list);
-            e = list_next (e))
+  for (struct list_elem *e = list_begin (&all_list); 
+				e != list_end (&all_list);e = list_next (e))
   {
-    struct thread *t = list_entry (e, struct thread, allelem);
-    int pr = priority_change(t->recent_cpu, t->nice);
-    t->priority = pr;
+    struct thread* dm=list_entry(e,struct thread, allelem);
+    dm->priority=priority_change(dm->recent_cpu, dm->nice);
   }
 }
 
