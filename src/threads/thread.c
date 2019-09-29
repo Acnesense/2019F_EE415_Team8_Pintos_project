@@ -629,8 +629,17 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->donations);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
-  t->nice=0;
-  t->recent_cpu=0;
+  struct thread *cur = running_thread ();  
+  if(is_thread (cur)&&(cur->status == THREAD_RUNNING))
+  {
+	  t->nice=cur->nice;
+	  t->recent_cpu=cur->recent_cpu;
+  }
+  else
+  {
+	  t->nice=0;
+	  t->recent_cpu=0;
+  }
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
