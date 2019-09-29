@@ -219,20 +219,6 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
-  if(thread_mlfqs) {
-    if(initialization) {
-      t->nice = 0;
-      t->recent_cpu = 0;
-      initialization = false;
-    }
-  else {
-    t->nice = thread_current()->nice;
-    t->recent_cpu = thread_current()->recent_cpu;
-  }
-  int p = priority_change(thread_current()->recent_cpu, thread_current()->nice);
-  thread_current()->priority = p;
-  }
-
   intr_set_level (old_level);
 
   /* Add to run queue. */
@@ -457,24 +443,25 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  
-  struct thread *t_current = thread_current();
-  int original_priority = t_current->original_priority;
-  int priority = t_current->priority;
+  if(!thread_mlfqs){
+    struct thread *t_current = thread_current();
+    int original_priority = t_current->original_priority;
+    int priority = t_current->priority;
 
-  if (original_priority == priority)
-  {
-    t_current->original_priority = new_priority;
-    t_current->priority = new_priority;
+    if (original_priority == priority)
+    {
+      t_current->original_priority = new_priority;
+      t_current->priority = new_priority;
+    }
+    else
+      t_current->original_priority = new_priority;
+    
+    
+    if(!list_empty(&ready_list)&&new_priority<
+    list_entry(list_front(&ready_list),struct thread, elem)
+    ->priority)
+    thread_yield();
   }
-  else
-    t_current->original_priority = new_priority;
-  
-  
-  if(!list_empty(&ready_list)&&new_priority<
-	list_entry(list_front(&ready_list),struct thread, elem)
-	->priority)
-	thread_yield();
 }
 
 /* Returns the current thread's priority. */
@@ -490,10 +477,13 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice UNUSED) 
 {
-  struct thread *t = thread_current();
-  t->nice = nice;
-  t->recent_cpu = recent_cpu_change(t->recent_cpu, t->nice);
-  t->priority = priority_change(t->recent_cpu, t->nice);
+  enum intr_level old_level = intr_disable();
+  thread_current()->nice=nice;
+  intr_set_level (old_level);
+  if(!list_empty(&ready_list)&&thread_current()->priority<
+	list_entry(list_front(&ready_list),struct thread, elem)
+	->priority)
+	thread_yield();
 }
 
 /* Returns the current thread's nice value. */
@@ -518,9 +508,10 @@ thread_get_load_avg (void)
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  struct thread *t = thread_current();
-  return round_real_to_int(100 * t->recent_cpu);
+  enum intr_level old_level = intr_disable();
+  int dum=(thread_current()->recent_cpu*100+f/2)/f;
+  intr_set_level (old_level);
+  return dum;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -614,6 +605,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->d_elem.next=NULL;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
+  t->nice=0;
+  t->recent_cpu=0;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -783,7 +776,6 @@ recent_cpu_change(recent_cpu, nice){
   recent_cpu = add_real_and_int(multiply_real_and_real(
                 divide_real_by_real(load, add_real_and_int(load, 1)), 
                 recent_cpu),nice);
-                
   return recent_cpu;
 }
 
@@ -800,14 +792,11 @@ recent_cpu_change_all(void){
   }
 }
 
-
 /* update priority of thread in all_list when this function is called */
 int
 priority_change (int recent_cpu, int nice) {
-  recent_cpu = round_real_to_int(recent_cpu/4);
-  nice = 2 * nice;
-  int p = PRI_MAX - recent_cpu - nice;
-  return priority_bound(p);
+  thread_current()->priority=PRI_MAX-thread_get_recent_cpu()/
+			(4*100)-2*thread_get_nice();
 }
 
 void
@@ -816,7 +805,7 @@ priority_change_all (void) {
 				e != list_end (&all_list);e = list_next (e))
   {
     struct thread* dm=list_entry(e,struct thread, allelem);
-    dm->priority=priority_change(dm->recent_cpu, dm->nice);
+    dm->priority=PRI_MAX-dm->recent_cpu/(4*f)-2*dm->nice;
   }
 }
 
