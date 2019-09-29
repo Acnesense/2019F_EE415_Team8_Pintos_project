@@ -121,7 +121,6 @@ timer_nsleep (int64_t ns)
 
 /* Busy-waits for approximately MS milliseconds.  Interrupts need
    not be turned on.
-
    Busy waiting wastes CPU cycles, and busy waiting with
    interrupts off for the interval between timer ticks or longer
    will cause timer ticks to be lost.  Thus, use timer_msleep()
@@ -134,7 +133,6 @@ timer_mdelay (int64_t ms)
 
 /* Sleeps for approximately US microseconds.  Interrupts need not
    be turned on.
-
    Busy waiting wastes CPU cycles, and busy waiting with
    interrupts off for the interval between timer ticks or longer
    will cause timer ticks to be lost.  Thus, use timer_usleep()
@@ -147,7 +145,6 @@ timer_udelay (int64_t us)
 
 /* Sleeps execution for approximately NS nanoseconds.  Interrupts
    need not be turned on.
-
    Busy waiting wastes CPU cycles, and busy waiting with
    interrupts off for the interval between timer ticks or longer
    will cause timer ticks to be lost.  Thus, use timer_nsleep()
@@ -171,51 +168,31 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-  if(thread_mlfqs)
-  {
-    if(ticks % TIMER_FREQ == 0)
-    {
-      thread_set_load_avg(thread_get_load_avg_long()*59/60+
-            thread_ready_threads()*FIXED/60);
-    }
-  }
-  thread_awake(ticks);
     if(thread_mlfqs)
   {
 	thread_current()->recent_cpu+=FIXED1;
 	if(ticks%TIMER_FREQ==0)
 	{
-    printf("%d \n", ticks);
+    // printf("%d \n", ticks);
 		thread_set_load_avg(thread_get_load_avg_long()*59/60+
 			thread_ready_threads()*FIXED1/60);
 		struct list *al=thread_all_list();
-    // struct list_elem *e = list_begin(al);
-    // while(e != list_end(al)){
-    //   struct thread* dm=list_entry(e,struct thread, allelem);
-		// 	dm->recent_cpu=2*thread_get_load_avg()*dm->recent_cpu/
-		// 		(2*thread_get_load_avg()+100)
-		// 		+dm->nice*FIXED1;
-		// 	// dm->priority=PRI_MAX-dm->recent_cpu/(4*FIXED1)-2*dm->nice;
-      
-		// 	// dm->priority=PRI_MAX-dm->recent_cpu/(4*FIXED1)-2*dm->nice;
-    //   e = list_next(e);
-    // }
-		// for (struct list_elem *e = list_begin (al); 
-		// 		e != list_end (al);e = list_next (e))
-		// {
-		// 	struct thread* dm=list_entry(e,struct thread, allelem);
-		// 	dm->recent_cpu=2*thread_get_load_avg()*dm->recent_cpu/
-		// 		(2*thread_get_load_avg()+100)
-		// 		+dm->nice*FIXED1;
-		// 	dm->priority=PRI_MAX-dm->recent_cpu/(4*FIXED1)-2*dm->nice;
-		// }
+		for (struct list_elem *e = list_begin (al); 
+				e != list_end (al);e = list_next (e))
+		{
+			struct thread* dm=list_entry(e,struct thread, allelem);
+			dm->recent_cpu=2*thread_get_load_avg()*dm->recent_cpu/
+				(2*thread_get_load_avg()+100)
+				+dm->nice*FIXED1;
+			dm->priority=PRI_MAX-dm->recent_cpu/(4*FIXED1)-2*dm->nice;
+		}
 	}
-	// if(ticks%4==0)
-	// {
-	// 	thread_current()->priority=PRI_MAX-thread_get_recent_cpu()/
-	// 		(4*FIXED1)-2*thread_get_nice();
-	// 		(4*100)-2*thread_get_nice();
-	// }
+	if(ticks%4==0)
+    {
+      thread_current()->priority=PRI_MAX-thread_get_recent_cpu()/
+        (4*FIXED1)-2*thread_get_nice();
+        (4*100)-2*thread_get_nice();
+    }
   }
   thread_awake(ticks);
 }
@@ -241,7 +218,6 @@ too_many_loops (unsigned loops)
 
 /* Iterates through a simple loop LOOPS times, for implementing
    brief delays.
-
    Marked NO_INLINE because code alignment can significantly
    affect timings, so that if this function was inlined
    differently in different places the results would be difficult

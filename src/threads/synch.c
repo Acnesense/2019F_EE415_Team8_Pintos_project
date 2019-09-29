@@ -225,7 +225,7 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
 
   struct thread *dum = thread_current();
-  if(lock->holder && !thread_mlfqs) {
+  if(lock->holder) {
     dum->wait_on_lock = lock;
     list_push_back(&(lock->holder->donations),&(dum->d_elem));
     int new_prio=dum->priority;
@@ -282,23 +282,22 @@ lock_release (struct lock *lock)
   int max_prio = lock->holder->original_priority;
 
   sema_up (&lock->semaphore);
-  if (!thread_mlfqs) {
-    while(dum && dum != list_end(&(lock->holder->donations)))
-      {
-        if(list_entry(dum , struct thread, d_elem)->wait_on_lock==lock)
-      {
-        dum=list_remove(dum);
-      }
-      else
-      {
-        int dum_prio = list_entry(dum, struct thread, d_elem)->priority;
-        max_prio = (max_prio > dum_prio) ? max_prio : dum_prio;
-        dum = list_next(dum);
-      }
-      }
-    thread_priority_donation(max_prio, t_current);
+
+  while(dum && dum != list_end(&(lock->holder->donations)))
+  {
+    if(list_entry(dum , struct thread, d_elem)->wait_on_lock==lock)
+	{
+	  dum=list_remove(dum);
+	}
+	else
+	{
+	  int dum_prio = list_entry(dum, struct thread, d_elem)->priority;
+	  max_prio = (max_prio > dum_prio) ? max_prio : dum_prio;
+	  dum = list_next(dum);
+	}
   }
   lock->holder = NULL;
+  thread_priority_donation(max_prio, t_current);
 }
 
 /* Returns true if the current thread holds LOCK, false
