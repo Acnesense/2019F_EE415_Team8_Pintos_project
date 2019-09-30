@@ -282,15 +282,6 @@ comp_priority(const struct list_elem *a,
 	> list_entry(b, struct thread, elem)->priority);
 }
 
-/*Compare the priority of two thread in list 
-	and return with d_elem*/
-static bool 
-comp_priority_d(const struct list_elem *a, 
-			const struct list_elem *b,void *aux UNUSED)
-{
-	return (list_entry(a, struct thread, d_elem)->priority
-	> list_entry(b, struct thread, d_elem)->priority);
-}
 
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
@@ -436,22 +427,6 @@ thread_set_priority (int new_priority)
   struct thread* dum=thread_current();
   if(dum->ori_prio==dum->priority) dum->priority=new_priority;
   dum->ori_prio=new_priority;
- /* Part for the effects of priority donation */
-  if(thread_current()->wait_on_lock)
-  {
-	  while(dum->wait_on_lock!=NULL)
-	  {
-		  dum=dum->wait_on_lock->holder;
-		  int dum_prio=dum->ori_prio;
-		  int max_prio=list_entry(list_max(&(dum->donations),
-				comp_priority_d,0),
-				struct thread,d_elem)->priority;
-		  dum->priority=
-			(dum_prio > max_prio)?
-			dum_prio : max_prio;
-		  if(dum->priority==dum_prio) break;
-	  }
-  }
   intr_set_level (old_level);
 
 /* If there is the thread with higher priority than current one,
