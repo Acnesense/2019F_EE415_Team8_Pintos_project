@@ -451,6 +451,8 @@ thread_set_nice (int nice)
 {
   enum intr_level old_level = intr_disable();
   thread_current()->nice=nice;
+  thread_current()->priority=PRI_MAX-
+		thread_get_recent_cpu()/(4*100)-2*thread_get_nice();
   intr_set_level (old_level);
   /*if(!list_empty(&ready_list)&&thread_current()->priority<
 	list_entry(list_front(&ready_list),struct thread, elem)
@@ -469,7 +471,7 @@ thread_get_nice (void)
   return nice;
 }
 
-/* Returns 100 times the system load average. */
+/* Returns 100 times the load_avg value. */
 int
 thread_get_load_avg (void) 
 {
@@ -479,21 +481,6 @@ thread_get_load_avg (void)
   return dum;
 }
 
-/* return load average in fixed point form */
-int
-thread_get_load_avg_long (void) 
-{
-  enum intr_level old_level = intr_disable();
-  int dum=load_avg;
-  intr_set_level (old_level);
-  return dum;
-}
-/* set load average */
-void
-thread_set_load_avg(int a)
-{
-	load_avg=a;
-}
 	
 /* Returns 100 times the current thread's recent_cpu value. */
 int
@@ -516,11 +503,30 @@ thread_ready_threads(void)
   return dum;
 }
 
-/* return all_list */
-struct list *
-thread_all_list(void)
+/* For MLFQS, calculate load_avg= load_avg * 59 / 60 + ready_threads / 60 */
+void
+thread_cal_load_avg(void)
 {
-	return &all_list;
+	load_avg=load_avg*59/60+thread_ready_threads()*FIXED1/60;
+}
+
+/* For MLFQS, calculate recent_cpu and priority of all threads. */
+void
+thread_cal_all_prio(void)
+{
+	for (struct list_elem *e = list_begin(&all_list); 
+		e != list_end(&all_list);e = list_next(e))
+	{
+		struct thread* dm=list_entry(e,struct thread, allelem);
+	/* recent_cpu = (2 * load_avg ) / (2* load_avg +1 ) *recent_cpu
+		+nice	*/
+		dm->recent_cpu=2*load_avg*dm->recent_cpu/(2*load_avg+FIXED1)+
+			dm->nice*FIXED1;
+	/* priority = PRI_MAX - recent_cpu / 4 - 2 * nice */
+		dm->priority=PRI_MAX-(dm->recent_cpu+
+			FIXED1/2)/(4*FIXED1)-2*dm->nice;
+	}
+	list_sort(&ready_list, comp_priority,0);
 }
 
 

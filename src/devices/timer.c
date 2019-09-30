@@ -167,6 +167,7 @@ timer_print_stats (void)
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
 
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
@@ -181,23 +182,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
 	thread_current()->recent_cpu+=FIXED1;
 	if(ticks%TIMER_FREQ==0)
 	{
-		/* load_avg= load_avg * 59 / 60 + ready_threads / 60 */
-		thread_set_load_avg(thread_get_load_avg_long()*59/60+
-			thread_ready_threads()*FIXED1/60);
-		struct list *al=thread_all_list();
-		for (struct list_elem *e = list_begin (al); 
-				e != list_end (al);e = list_next (e))
-		{
-			struct thread* dm=list_entry(e,struct thread, allelem);
-	/* recent_cpu = (2 * load_avg ) / (2* load_avg +1 ) *recent_cpu
-		+nice	*/
-			dm->recent_cpu=2*thread_get_load_avg()*dm->recent_cpu/
-				(2*thread_get_load_avg()+100)
-				+dm->nice*FIXED1;
-	/* priority = PRI_MAX - recent_cpu / 4 - 2 * nice */
-			dm->priority=(PRI_MAX-dm->recent_cpu+
-				FIXED1/2)/(4*FIXED1)-2*dm->nice;
-		}
+		thread_cal_load_avg();
+		thread_cal_all_prio();
 	}
 	if(ticks%4==0)
 	{

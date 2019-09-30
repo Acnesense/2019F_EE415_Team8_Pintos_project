@@ -149,8 +149,7 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-int thread_get_load_avg_long (void) ;
-void thread_set_load_avg(int);
 int thread_ready_threads(void);
-struct list* thread_all_list(void);
+void thread_cal_load_avg(void);
+void thread_cal_all_prio(void);
 #endif /* threads/thread.h */
