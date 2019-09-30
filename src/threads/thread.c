@@ -222,6 +222,14 @@ thread_create (const char *name, int priority,
   return tid;
 }
 
+static bool 
+comp_ticks(const struct list_elem *a, 
+			const struct list_elem *b,void *aux UNUSED)
+{
+	return (list_entry(a, struct thread, elem)->wake_up_ticks
+	< list_entry(b, struct thread, elem)->wake_up_ticks);
+}
+
 /* wake up sleeping threads whose wake_up_ticks are expired
    in sleep list and remove it from sleep_list */
 
@@ -237,7 +245,7 @@ thread_awake (int64_t ticks)
       e = list_remove(&t->elem);
       thread_unblock(t);
     }
-    else e = list_next(e);
+    else break;
   }
 }
 
@@ -258,7 +266,7 @@ thread_sleep (int64_t ticks)
   t->wake_up_ticks = ticks;
 
   /* push thread to sleep list */
-  list_push_back(&sleep_list, &t->elem);
+  list_insert_ordered(&sleep_list, &t->elem, comp_ticks, 0);
   
   thread_block();
 
