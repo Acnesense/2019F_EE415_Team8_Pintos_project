@@ -152,4 +152,5 @@ int thread_get_load_avg (void);
 int thread_ready_threads(void);
 void thread_cal_load_avg(void);
 void thread_cal_all_prio(void);
+void thread_cal_cur_prio(void);
 #endif /* threads/thread.h */

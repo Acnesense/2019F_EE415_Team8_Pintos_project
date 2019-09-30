@@ -186,11 +186,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
 		thread_cal_all_prio();
 	}
 	if(ticks%4==0)
-	{
-	/* priority = PRI_MAX - recent_cpu / 4 - 2 * nice */
-		thread_current()->priority=PRI_MAX-
-			thread_get_recent_cpu()/(4*100)-2*thread_get_nice();
-	}
+		thread_cal_cur_prio();
+	
   }
   /* End of MLFQS part */
   thread_awake(ticks);

@@ -319,7 +319,8 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
   //list_push_back (&ready_list, &t->elem);
   /* Insert elements and sort the list. */
-  list_insert_ordered(&ready_list, &t->elem, comp_priority,0);
+  if (t != idle_thread) 
+	list_insert_ordered(&ready_list, &t->elem, comp_priority,0);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -450,15 +451,10 @@ void
 thread_set_nice (int nice) 
 {
   enum intr_level old_level = intr_disable();
-  thread_current()->nice=nice;
-  thread_current()->priority=PRI_MAX-
-		thread_get_recent_cpu()/(4*100)-2*thread_get_nice();
+  struct thread *cur=thread_current();
+  cur->nice=nice;
+  cur->priority=PRI_MAX-(cur->recent_cpu/4+FIXED1/2)/FIXED1-2*cur->nice;
   intr_set_level (old_level);
-  /*if(!list_empty(&ready_list)&&thread_current()->priority<
-	list_entry(list_front(&ready_list),struct thread, elem)
-	->priority)
-	thread_yield();*/
-
 }
 
 /* Returns the current thread's nice value. */
@@ -492,13 +488,13 @@ thread_get_recent_cpu (void)
   return dum;
 }
 
-/* return size of ready_list */
+/* return size of ready_list except idle_thread */
 int
 thread_ready_threads(void)
 {
   enum intr_level old_level = intr_disable();
-  int dum=(int) list_size(&ready_list);
-  if(thread_current()!= idle_thread) dum++;
+  int dum=(int) list_size(&ready_list)+1;
+  if(thread_current()==idle_thread) dum--;
   intr_set_level (old_level);
   return dum;
 }
@@ -520,13 +516,23 @@ thread_cal_all_prio(void)
 		struct thread* dm=list_entry(e,struct thread, allelem);
 	/* recent_cpu = (2 * load_avg ) / (2* load_avg +1 ) *recent_cpu
 		+nice	*/
-		dm->recent_cpu=2*load_avg*dm->recent_cpu/(2*load_avg+FIXED1)+
+		dm->recent_cpu=2*thread_get_load_avg()*
+			dm->recent_cpu/(2*thread_get_load_avg()+100)+
 			dm->nice*FIXED1;
 	/* priority = PRI_MAX - recent_cpu / 4 - 2 * nice */
 		dm->priority=PRI_MAX-(dm->recent_cpu+
 			FIXED1/2)/(4*FIXED1)-2*dm->nice;
 	}
 	list_sort(&ready_list, comp_priority,0);
+}
+
+/* For MLFQS, calculate the priority of current thread. 
+	priority = PRI_MAX - recent_cpu / 4 - 2 * nice */
+void
+thread_cal_cur_prio()
+{
+  struct thread* cur=thread_current();
+  cur->priority=PRI_MAX-cur->recent_cpu/(4*FIXED1)-2*cur->nice;
 }
 
 
