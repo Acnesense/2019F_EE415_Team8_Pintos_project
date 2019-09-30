@@ -275,13 +275,14 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
   
-  /* Priority donation part. Recalcuate the priority of lock holder 
-	without the waiters of released lock and so on */
+  /* Priority donation part. */
   if(!thread_mlfqs)
   {
 	struct list_elem* dum=list_begin(&(lock->holder->donations));
 	int max_prio=lock->holder->ori_prio;
-  
+  /* Remove the threads which wait the released lock and 
+	recalcuate the priority of lock holder 
+	without the waiters of released lock. */
 	while(dum&&dum!=list_end(&(lock->holder->donations)))
 	{
 		if(list_entry(dum,struct thread,d_elem)->wait_on_lock==lock)

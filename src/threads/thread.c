@@ -452,10 +452,10 @@ thread_set_nice (int nice)
   enum intr_level old_level = intr_disable();
   thread_current()->nice=nice;
   intr_set_level (old_level);
-  if(!list_empty(&ready_list)&&thread_current()->priority<
+  /*if(!list_empty(&ready_list)&&thread_current()->priority<
 	list_entry(list_front(&ready_list),struct thread, elem)
 	->priority)
-	thread_yield();
+	thread_yield();*/
 
 }
 

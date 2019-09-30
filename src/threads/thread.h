@@ -26,6 +26,7 @@ typedef int tid_t;
 
 /* 1 for fixed point arithmetic*/
 #define FIXED1 16384
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The

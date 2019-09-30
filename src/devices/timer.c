@@ -195,14 +195,15 @@ timer_interrupt (struct intr_frame *args UNUSED)
 				(2*thread_get_load_avg()+100)
 				+dm->nice*FIXED1;
 	/* priority = PRI_MAX - recent_cpu / 4 - 2 * nice */
-			dm->priority=PRI_MAX-dm->recent_cpu/(4*FIXED1)-2*dm->nice;
+			dm->priority=(PRI_MAX-dm->recent_cpu+
+				FIXED1/2)/(4*FIXED1)-2*dm->nice;
 		}
 	}
 	if(ticks%4==0)
 	{
 	/* priority = PRI_MAX - recent_cpu / 4 - 2 * nice */
-		thread_current()->priority=PRI_MAX-thread_get_recent_cpu()/
-			(4*100)-2*thread_get_nice();
+		thread_current()->priority=PRI_MAX-
+			thread_get_recent_cpu()/(4*100)-2*thread_get_nice();
 	}
   }
   /* End of MLFQS part */
