@@ -63,7 +63,7 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
-/* load_avg for mlfqs */
+/* load average for MLFQS. */
 int load_avg;
 
 static void kernel_thread (thread_func *, void *aux);
@@ -223,26 +223,22 @@ thread_create (const char *name, int priority,
 }
 
 /* wake up sleeping threads whose wake_up_ticks are expired
-   in sleep list. and remove it from sleep list
-   */
+   in sleep list and remove it from sleep_list */
 
 void
 thread_awake (int64_t ticks)
 {
-  struct list_elem *e;
-  e = list_begin(&sleep_list);
-  while(e != list_end(&sleep_list)){
+  struct list_elem *e=list_begin(&sleep_list);
+  while(e!=list_end(&sleep_list))
+  {
     struct thread *t = list_entry(e, struct thread, elem);
-    if (t->wake_up_ticks <= ticks) {
+    if (t->wake_up_ticks <= ticks) 
+	{
       e = list_remove(&t->elem);
       thread_unblock(t);
     }
-    else {
-      e = list_next(e);
-    }
-
+    else e = list_next(e);
   }
-
 }
 
 
@@ -323,7 +319,8 @@ thread_unblock (struct thread *t)
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
   //list_push_back (&ready_list, &t->elem);
-  list_insert_ordered(&ready_list, &t->elem, comp_priority,0);//here
+  /* Insert elements and sort the list. */
+  list_insert_ordered(&ready_list, &t->elem, comp_priority,0);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -395,6 +392,7 @@ thread_yield (void)
   old_level = intr_disable ();
   if (cur != idle_thread) 
     //list_push_back (&ready_list, &cur->elem);
+	/* Insert the element and sort the list */
 	list_insert_ordered(&ready_list, &cur->elem, comp_priority,0);
   cur->status = THREAD_READY;
   schedule ();
@@ -422,6 +420,7 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+/* It works only when it is not MLFQS */
   if(!thread_mlfqs)
   {
   enum intr_level old_level;
@@ -429,7 +428,7 @@ thread_set_priority (int new_priority)
   struct thread* dum=thread_current();
   if(dum->ori_prio==dum->priority) dum->priority=new_priority;
   dum->ori_prio=new_priority;
- 
+ /* Part for the effects of priority donation */
   if(thread_current()->wait_on_lock)
   {
 	  while(dum->wait_on_lock!=NULL)
@@ -447,6 +446,8 @@ thread_set_priority (int new_priority)
   }
   intr_set_level (old_level);
 
+/* If there is the thread with higher priority than current one,
+	yield. */
   if(!list_empty(&ready_list)&&thread_current()->priority<
 	list_entry(list_front(&ready_list),struct thread, elem)
 	->priority)
@@ -495,7 +496,7 @@ thread_get_load_avg (void)
   return dum;
 }
 
-/* return load average times FIXED1*/
+/* return load average in fixed point form */
 int
 thread_get_load_avg_long (void) 
 {
@@ -630,6 +631,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
   struct thread *cur = running_thread ();  
+ /* Inherit the nice and recent_cpu of parents. 
+	If it is main thread, set both 0. */
   if(is_thread (cur)&&(cur->status == THREAD_RUNNING))
   {
 	  t->nice=cur->nice;

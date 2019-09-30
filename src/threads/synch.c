@@ -32,6 +32,15 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+/*Compare the priority of two thread in list and return*/
+static bool 
+comp_priority(const struct list_elem *a, 
+			const struct list_elem *b,void *aux UNUSED)
+{
+	return (list_entry(a, struct thread, elem)->priority
+	> list_entry(b, struct thread, elem)->priority);
+}
+
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -42,17 +51,6 @@
    - up or "V": increment the value (and wake up one waiting
      thread, if any). */
 	 
-
-/*Compare the priority of two thread in list and return*/
-static bool 
-comp_priority(const struct list_elem *a, 
-			const struct list_elem *b,void *aux UNUSED)
-{
-	return (list_entry(a, struct thread, elem)->priority
-	> list_entry(b, struct thread, elem)->priority);
-}
-
-
 void
 sema_init (struct semaphore *sema, unsigned value) 
 {
@@ -215,9 +213,12 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-  //enum intr_level old_level;
-  //old_level = intr_disable();
+  enum intr_level old_level;
+  old_level = intr_disable();
   
+  /* Priority donation part. Don't work when MLFQS 
+	If lock has holder already, donate priority to holder 
+	and holders lock that it waits. */
   struct thread * dum=thread_current();
   if(!thread_mlfqs && lock->holder)
   {
@@ -236,7 +237,7 @@ lock_acquire (struct lock *lock)
 		  new_prio=dum->priority;
 	  }
   }
-  //intr_set_level (old_level);
+  intr_set_level (old_level);
   
   sema_down (&lock->semaphore);
   thread_current()->wait_on_lock=NULL;
@@ -274,6 +275,8 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
   
+  /* Priority donation part. Recalcuate the priority of lock holder 
+	without the waiters of released lock and so on */
   if(!thread_mlfqs)
   {
 	struct list_elem* dum=list_begin(&(lock->holder->donations));
@@ -317,7 +320,8 @@ struct semaphore_elem
   {
     struct list_elem elem;              /* List element. */
     struct semaphore semaphore;         /* This semaphore. */
-	int prio;
+	int prio; 		/* Priority of semaphore_elem used 
+						for cond_wait and cond_signal */
   };
 
 /*Compare the priority of two semaphore_elem in list and return*/
@@ -375,7 +379,7 @@ cond_wait (struct condition *cond, struct lock *lock)
   sema_init (&waiter.semaphore, 0);
   waiter.prio=thread_current()->priority;
   //list_push_back (&cond->waiters, &waiter.elem);
-
+/* Make the list sorted after insert. */
   list_insert_ordered(&cond->waiters, &waiter.elem,comp_priority_cond, 0);
   lock_release (lock);
   sema_down (&waiter.semaphore);
@@ -398,7 +402,8 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (lock_held_by_current_thread (lock));
 
   if (!list_empty (&cond->waiters))
-  {	  
+  {	
+/* Make the list sorted before pop. */  
 	list_sort(&cond->waiters, comp_priority_cond, 0);
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);

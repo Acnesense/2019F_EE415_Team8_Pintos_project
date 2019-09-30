@@ -85,13 +85,13 @@ typedef int tid_t;
 struct thread
   {
     /* Owned by thread.c. */
-    tid_t tid;                          /* Thread identifier. */
-    enum thread_status status;          /* Thread state. */
-    char name[16];                      /* Name (for debugging purposes). */
-    uint8_t *stack;                     /* Saved stack pointer. */
-    int priority;                       /* Priority. */
-    struct list_elem allelem;           /* List element for all threads list. */
-    int64_t wake_up_ticks;               /* remember when thread is waked up */
+    tid_t tid;                      /* Thread identifier. */
+    enum thread_status status;      /* Thread state. */
+    char name[16];                  /* Name (for debugging purposes). */
+    uint8_t *stack;                 /* Saved stack pointer. */
+    int priority;                   /* Priority. */
+    struct list_elem allelem;       /* List element for all threads list. */
+    int64_t wake_up_ticks;          /* remember when thread is waked up */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -99,8 +99,8 @@ struct thread
 	struct lock *wait_on_lock;	/* lock that thread is waiting */
 	struct list donations;		/* list for multiple donations */
 	struct list_elem d_elem;/* list element for multiple donation */
-	int nice;
-	int recent_cpu;
+	int nice;			/* nice value used for MLFQS */
+	int recent_cpu;		/* recent usage of cpu by thread */
 	
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
