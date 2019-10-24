@@ -167,26 +167,29 @@ timer_print_stats (void)
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
 
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-  if (thread_mlfqs){
-    struct thread *t_current = thread_current();
-    struct list_elem *e;
-    t_current->recent_cpu = add_real_and_int(t_current->recent_cpu, 1);
-
-    if (ticks % TIMER_FREQ == 0){
-      load_avg_change();
-      recent_cpu_change_all();
-      priority_change_all();
-    }
-    if (ticks % 4 == 0){
-      priority_change(t_current->recent_cpu, t_current->nice);
-    }
+  /* MLFQS part. For each tick, increase the recent_cpu 1.
+	Calcualte loag_avg, recent_cpu of all thread for each second
+	Calculate recent_cpu of current threads for each 4 ticks*/
+  if(thread_mlfqs)
+  {
+	thread_current()->recent_cpu+=FIXED1;
+	if(ticks%TIMER_FREQ==0)
+	{
+		thread_cal_load_avg();
+		thread_cal_all_prio();
+	}
+	if(ticks%4==0)
+		thread_cal_cur_prio();
+	
   }
+  /* End of MLFQS part */
   thread_awake(ticks);
 }
 

@@ -24,6 +24,9 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* 1 for fixed point arithmetic*/
+#define FIXED1 16384
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -83,22 +86,23 @@ typedef int tid_t;
 struct thread
   {
     /* Owned by thread.c. */
-    tid_t tid;                          /* Thread identifier. */
-    enum thread_status status;          /* Thread state. */
-    char name[16];                      /* Name (for debugging purposes). */
-    uint8_t *stack;                     /* Saved stack pointer. */
-    int priority;                       /* Priority. */
-    struct list_elem allelem;           /* List element for all threads list. */
-    int64_t wake_up_ticks;               /* remember when thread is waked up */
-    int nice;                            /* nice value of thread */
-    int recent_cpu;                      /* recent cpu of thread */
+    tid_t tid;                      /* Thread identifier. */
+    enum thread_status status;      /* Thread state. */
+    char name[16];                  /* Name (for debugging purposes). */
+    uint8_t *stack;                 /* Saved stack pointer. */
+    int priority;                   /* Priority. */
+    struct list_elem allelem;       /* List element for all threads list. */
+    int64_t wake_up_ticks;          /* remember when thread is waked up */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-	int original_priority;			/* original priority before donations */
+	int ori_prio;			/* original priority before donations */
 	struct lock *wait_on_lock;	/* lock that thread is waiting */
 	struct list donations;		/* list for multiple donations */
 	struct list_elem d_elem;/* list element for multiple donation */
+	int nice;			/* nice value used for MLFQS */
+	int recent_cpu;		/* recent usage of cpu by thread */
+	
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -123,7 +127,6 @@ typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
 void thread_sleep (int64_t ticks);
 void thread_awake (int64_t ticks);
-void thread_priority_donation (int new_priority, struct thread *t);
 
 void thread_block (void);
 void thread_unblock (struct thread *);
@@ -146,14 +149,8 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
-
-int int_to_real (int n);
-int add_real_and_int (int x, int y);
-int round_real_to_int (int x);
-void load_avg_change(void);
-int recent_cpu_change(int recent_cpu, int nice);
-void recent_cpu_change_all(void);
-int priority_change(int recent_cpu, int nice);
-void priority_change_all(void);
-
+int thread_ready_threads(void);
+void thread_cal_load_avg(void);
+void thread_cal_all_prio(void);
+void thread_cal_cur_prio(void);
 #endif /* threads/thread.h */
