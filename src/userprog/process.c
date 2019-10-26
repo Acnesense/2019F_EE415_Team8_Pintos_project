@@ -18,6 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+//static void gdbstp(void){printf("???\n");}
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -29,6 +30,8 @@ tid_t
 process_execute (const char *file_name) 
 {
   char *fn_copy;
+  char cpy_file_name[256];
+  char * proc_name;
   tid_t tid;
 
   /* Make a copy of FILE_NAME.
@@ -37,9 +40,11 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-
+  strlcpy (cpy_file_name,file_name, PGSIZE);
+  char * save_ptr;
+  proc_name=strtok_r(cpy_file_name," ", &save_ptr);
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (proc_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -51,20 +56,82 @@ static void
 start_process (void *file_name_)
 {
   char *file_name = file_name_;
+  char cpy_file_name[256];
+  char * token;
   struct intr_frame if_;
   bool success;
-
+  
+  char * save_ptr;
+  strlcpy(cpy_file_name,file_name,strlen(file_name)+1);
+  token=strtok_r(cpy_file_name," ", &save_ptr);
+  
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
-
+  success = load (token, &if_.eip, &if_.esp);
+  
+  if(success)
+  {
+	  //get argc
+	  int proc_argc=0;
+	  while(token!=NULL)
+	  {
+		  proc_argc++;
+		  token=strtok_r(NULL," ",&save_ptr);
+	  }
+	  //get argv
+	  char** proc_argv;
+	  proc_argv=(char **) malloc(sizeof(char *)*proc_argc);
+	  
+	  strlcpy(cpy_file_name,file_name,strlen(file_name)+1);
+	  int index=0;
+	  for(token=strtok_r(cpy_file_name, " ", &save_ptr);
+		token!=NULL;token=strtok_r(NULL, " ", &save_ptr))
+	  {
+		  proc_argv[index]=token;
+		  index++;
+	  }
+	  //push arguments
+	  int total_len=0;
+	  for(int i=proc_argc-1;i>=0;i--)
+	  {
+		  int len=strlen(proc_argv[i]);
+		  if_.esp-=len+1;
+		  strlcpy((char *) if_.esp,proc_argv[i],len+1);
+		  total_len+=len+1;
+		  proc_argv[i]=if_.esp;
+	  }
+	  //word align
+	  if_.esp-=3-(total_len+3)%4;
+	  //1 Byte padding
+	  if_.esp -= 4;
+      *(uint32_t *) if_.esp = 0;
+	  //push arguments' address
+	  for(int i=proc_argc-1;i>=0;i--)
+	  {
+		if_.esp-=4;
+		*(uint32_t *) if_.esp=proc_argv[i];
+	  }
+	  //push main's arguments
+	  if_.esp-=4;
+	  *(uint32_t *) if_.esp=if_.esp+4;
+	  if_.esp-=4;
+	  *(uint32_t *) if_.esp=proc_argc;
+	  //push fake address
+	  if_.esp-=4;
+	  *(uint32_t *) if_.esp=0;
+	  
+	  free(proc_argv);
+	  
+  }
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
+  
+  hex_dump(if_.esp, if_.esp, PHYS_BASE -if_.esp,true);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -86,7 +153,7 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
   return -1;
 }
