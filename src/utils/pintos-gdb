@@ -1,7 +1,11 @@
 #! /bin/sh
 
 # Path to GDB macros file.  Customize for your site.
+<<<<<<< HEAD
 GDBMACROS=/mnt/d/EE/EE415/pintos/src/misc/gdb-macros
+=======
+GDBMACROS=/usr/class/cs140/pintos/pintos/src/misc/gdb-macros
+>>>>>>> 2c6dac68ee6ebe6e67d5b69b97478dd9475c5df8
 
 # Choose correct GDB.
 if command -v i386-elf-gdb >/dev/null 2>&1; then
