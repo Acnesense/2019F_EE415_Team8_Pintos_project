@@ -18,10 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-<<<<<<< HEAD
 //static void gdbstp(void){printf("???\n");}
-=======
->>>>>>> 2c6dac68ee6ebe6e67d5b69b97478dd9475c5df8
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -33,11 +30,8 @@ tid_t
 process_execute (const char *file_name) 
 {
   char *fn_copy;
-<<<<<<< HEAD
   char cpy_file_name[256];
   char * proc_name;
-=======
->>>>>>> 2c6dac68ee6ebe6e67d5b69b97478dd9475c5df8
   tid_t tid;
 
   /* Make a copy of FILE_NAME.
@@ -46,17 +40,11 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-<<<<<<< HEAD
   strlcpy (cpy_file_name,file_name, PGSIZE);
   char * save_ptr;
   proc_name=strtok_r(cpy_file_name," ", &save_ptr);
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (proc_name, PRI_DEFAULT, start_process, fn_copy);
-=======
-
-  /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
->>>>>>> 2c6dac68ee6ebe6e67d5b69b97478dd9475c5df8
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -68,7 +56,6 @@ static void
 start_process (void *file_name_)
 {
   char *file_name = file_name_;
-<<<<<<< HEAD
   char cpy_file_name[256];
   char * token;
   struct intr_frame if_;
@@ -78,17 +65,11 @@ start_process (void *file_name_)
   strlcpy(cpy_file_name,file_name,strlen(file_name)+1);
   token=strtok_r(cpy_file_name," ", &save_ptr);
   
-=======
-  struct intr_frame if_;
-  bool success;
-
->>>>>>> 2c6dac68ee6ebe6e67d5b69b97478dd9475c5df8
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-<<<<<<< HEAD
   success = load (token, &if_.eip, &if_.esp);
   
   if(success)
@@ -145,19 +126,12 @@ start_process (void *file_name_)
 	  free(proc_argv);
 	  
   }
-=======
-  success = load (file_name, &if_.eip, &if_.esp);
-
->>>>>>> 2c6dac68ee6ebe6e67d5b69b97478dd9475c5df8
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
-<<<<<<< HEAD
   
   hex_dump(if_.esp, if_.esp, PHYS_BASE -if_.esp,true);
-=======
->>>>>>> 2c6dac68ee6ebe6e67d5b69b97478dd9475c5df8
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -179,11 +153,7 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-<<<<<<< HEAD
 process_wait (tid_t child_tid) 
-=======
-process_wait (tid_t child_tid UNUSED) 
->>>>>>> 2c6dac68ee6ebe6e67d5b69b97478dd9475c5df8
 {
   return -1;
 }
