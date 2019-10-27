@@ -1,4 +1,3 @@
-
 #include "devices/shutdown.h"
 #include <console.h>
 #include <stdio.h>
