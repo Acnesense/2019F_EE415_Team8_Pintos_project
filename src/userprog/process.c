@@ -30,6 +30,7 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
+  char *save_ptr;
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -37,12 +38,20 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-
+  
+  file_name = strtok_r(file_name, " ", &save_ptr);
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
+}
+
+void parse_filename(char *src, char *dest) {
+  int i;
+  strlcpy(dest, src, strlen(src) + 1);
+  for (i=0; dest[i]!='\0' && dest[i] != ' '; i++);
+  dest[i] = '\0';
 }
 
 /* A thread function that loads a user process and starts it
@@ -52,18 +61,35 @@ start_process (void *file_name_)
 {
   char *file_name = file_name_;
   struct intr_frame if_;
+  char *cmd_line;
   bool success;
+  char cmd_name[256]; // 4KB
 
+  char *token, *save_ptr;
+  int argc = 0;
+  // parse_filename(file_name, cmd_name);
+  cmd_line = palloc_get_page(0);
+  strlcpy (cmd_line, file_name, strlen(file_name) + 1);
+  file_name = strtok_r(file_name, " ", &save_ptr);
+  printf("\n\n%s\n\n", file_name);
+  for (token = strtok_r(NULL, " ", &save_ptr); token != NULL;
+        token = strtok_r(NULL, " ", &save_ptr))
+    argc++;
+  argc++;
+  
   /* Initialize interrupt frame and load executable. */
+
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
-
+  if (success) {
+    set_up_stack(cmd_line, &if_.esp, argc);
+  }
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
+  if (!success)
     thread_exit ();
 
   /* Start the user process by simulating a return from an
@@ -72,8 +98,58 @@ start_process (void *file_name_)
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
+  hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
+}
+
+void
+set_up_stack(char *cmd_line, void**esp, int argc)
+{
+  int i, length, total_length;
+  char *token, *save_ptr;
+  const ** argv;
+  void *argv_address[argc];
+
+  argv = (char **)malloc(sizeof(char *) * argc);
+
+  for (i = 0, token = strtok_r(cmd_line, " ", &save_ptr); token != NULL;
+       i++, token = strtok_r (NULL, " ", &save_ptr))
+  {
+    argv[i] = token;
+  }
+
+  for (i = argc-1, total_length=0; i >= 0; i--)
+  {
+    length = strlen(argv[i]) + 1;
+    total_length += length;
+    *esp -= length;
+    memcpy(*esp, argv[i], length);
+    argv_address[i] = *esp;
+  }
+  // push word-align
+  *esp -= total_length % 4 != 0 ? 4- (total_length % 4) : 0;
+
+  // push last null
+  *esp -= 4;
+  *((uint32_t*) *esp)=0;
+
+  // push address of argv
+  for (i = argc-1; i >= 0; i--)
+  {
+    *esp -= 4;
+    *((void**) *esp) = argv_address[i];
+  }
+  // push argv address
+  *esp -= 4;
+  *((void**) *esp) = *esp + 4;
+
+  *esp -= 4;
+  *((void**) *esp) = argc;
+
+  *esp -= 4;
+  *((void**) *esp) = 0;
+
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
@@ -88,6 +164,8 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+  int i;
+  for (i = 0; i < 1000000000; i++);
   return -1;
 }
 
