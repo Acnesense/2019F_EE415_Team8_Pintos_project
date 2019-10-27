@@ -47,13 +47,6 @@ process_execute (const char *file_name)
   return tid;
 }
 
-void parse_filename(char *src, char *dest) {
-  int i;
-  strlcpy(dest, src, strlen(src) + 1);
-  for (i=0; dest[i]!='\0' && dest[i] != ' '; i++);
-  dest[i] = '\0';
-}
-
 /* A thread function that loads a user process and starts it
    running. */
 static void
@@ -67,11 +60,9 @@ start_process (void *file_name_)
 
   char *token, *save_ptr;
   int argc = 0;
-  // parse_filename(file_name, cmd_name);
   cmd_line = palloc_get_page(0);
   strlcpy (cmd_line, file_name, strlen(file_name) + 1);
   file_name = strtok_r(file_name, " ", &save_ptr);
-  printf("\n\n%s\n\n", file_name);
   for (token = strtok_r(NULL, " ", &save_ptr); token != NULL;
         token = strtok_r(NULL, " ", &save_ptr))
     argc++;
@@ -98,7 +89,6 @@ start_process (void *file_name_)
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
-  hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }
