@@ -18,7 +18,7 @@ syscall_handler (struct intr_frame *f)
 {
   printf ("system call!\n");
   int *esp=f->esp;
-  printf("%d\n",*esp);
+  printf("esx : %d\n",*esp);
   thread_exit ();
 }
 =======
