@@ -20,6 +20,8 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+struct thread *get_child_process(int pid);
+void remove_child_process(struct thread *cp);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -41,9 +43,11 @@ process_execute (const char *file_name)
   
   file_name = strtok_r(file_name, " ", &save_ptr);
   /* Create a new thread to execute FILE_NAME. */
+  if (filesys_open (file_name) == NULL)
+    return -1;
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+    palloc_free_page (fn_copy);
   return tid;
 }
 
@@ -80,8 +84,9 @@ start_process (void *file_name_)
   }
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success)
+  if (!success) {
     thread_exit ();
+  }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -154,9 +159,14 @@ set_up_stack(char *cmd_line, void**esp, int argc)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  int i;
-  for (i = 0; i < 1000000000; i++);
-  return -1;
+  int exit_status;
+  struct thread *child_process = get_child_process(child_tid);
+  if (child_process == NULL)
+    return -1;
+  sema_down(&child_process->exit_sema);
+  exit_status = child_process->exit_status;
+  remove_child_process(child_process);
+  return exit_status;
 }
 
 /* Free the current process's resources. */
@@ -182,6 +192,27 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+}
+
+struct thread *
+get_child_process (int pid) {
+  struct thread *t_current = thread_current();
+  struct list_elem *e;
+
+  for (e = list_begin (&(t_current->child_list)); e != list_end (&(t_current->child_list));
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, child_elem);
+      if (t->tid == pid)
+        return t;
+    }
+  return NULL;
+}
+
+void
+remove_child_process(struct thread *cp) {
+  list_remove(&cp->child_elem);
+  palloc_free_page(cp);
 }
 
 /* Sets up the CPU for running user code in the current

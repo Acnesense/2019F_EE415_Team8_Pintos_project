@@ -198,6 +198,16 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+#ifdef USERPROG
+  struct thread *t_current = thread_current();
+  t->parent_process_descriptor = t_current;
+
+  t->process_load = false;
+  t->process_exit = false;
+  sema_init(&(t->exit_sema), 0);
+  sema_init(&(t->load_sema), 0);
+  list_push_back (&(running_thread()->child_list), &(t->child_elem));
+#endif
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -290,8 +300,12 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
-  list_remove (&thread_current()->allelem);
-  thread_current ()->status = THREAD_DYING;
+  struct thread *t = thread_current();
+  list_remove (&t->allelem);
+  t->process_exit = true;
+  sema_up(&t->exit_sema);
+
+  t->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
 }
@@ -466,6 +480,12 @@ init_thread (struct thread *t, const char *name, int priority)
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
+#ifdef USERPROG
+  list_init (&(t->child_list));
+
+#endif
+
+
   intr_set_level (old_level);
 }
 
@@ -538,7 +558,7 @@ thread_schedule_tail (struct thread *prev)
   if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) 
     {
       ASSERT (prev != cur);
-      palloc_free_page (prev);
+      // palloc_free_page (prev);
     }
 }
 
