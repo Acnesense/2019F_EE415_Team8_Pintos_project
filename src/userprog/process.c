@@ -33,24 +33,34 @@ process_execute (const char *file_name)
   char *fn_copy;
   tid_t tid;
   char *save_ptr;
+  char *cmd_name;
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
+  cmd_name = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-  
-  file_name = strtok_r(file_name, " ", &save_ptr);
+  strlcpy (cmd_name, file_name, strlen(file_name) + 1);
+  cmd_name = strtok_r(cmd_name, " ", &save_ptr);
+
   /* Create a new thread to execute FILE_NAME. */
-  if (filesys_open (file_name) == NULL)
+  if (filesys_open (cmd_name) == NULL)
     return -1;
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  
+  tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy);
   return tid;
 }
 
+void parse_filename(char *src, char *dest) {
+  int i;
+  strlcpy(dest, src, strlen(src) + 1);
+  for (i=0; dest[i]!='\0' && dest[i] != ' '; i++);
+  dest[i] = '\0';
+}
 /* A thread function that loads a user process and starts it
    running. */
 static void
