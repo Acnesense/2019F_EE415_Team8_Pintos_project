@@ -6,7 +6,17 @@
 #include "threads/vaddr.h"
 #include "devices/shutdown.h"
 
+void sys_halt(void);
+void sys_exit(int status);
+bool sys_create (const char *file, unsigned initial_size);
+bool sys_remove (const char *file);
+int sys_read (int fd, const void *buffer, unsigned size);
+int sys_write (int fd, const void *buffer, unsigned size);
+void close (int fd);
+
+void check_address(void *address);
 static void syscall_handler (struct intr_frame *);
+
 
 void
 syscall_init (void) 
@@ -39,14 +49,19 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_CREATE:
     {
       uint32_t *file = f->esp + 4;
-      uint32_t *initial_size = f->esp + 4;
+      uint32_t *initial_size = f->esp + 8;
       check_address(file);
       check_address(initial_size);
       f->eax = sys_create((const char *) *file, (unsigned) *initial_size);
       break;
     }      
-    case SYS_REMOVE:                 
+    case SYS_REMOVE:
+    {
+      uint32_t *file = f->esp + 4;
+      check_address(file);
+      f->eax = sys_remove((const char *) *file);
       break;
+    }
     case SYS_OPEN:                   
       break;
     case SYS_FILESIZE:
@@ -60,7 +75,6 @@ syscall_handler (struct intr_frame *f UNUSED)
       check_address(buffer);
       check_address(size);
       f->eax = sys_read((int)*fd, (void *)*buffer, (unsigned)*size);
-
       break;
     }
     case SYS_WRITE:
@@ -71,7 +85,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       check_address(fd);
       check_address(buffer);
       check_address(size);
-      f->eax = sys_write((int)*fd, (void *)*buffer, (unsigned)*size);
+      f->eax = sys_write((int)*fd, (void *) *buffer, (unsigned)*size);
       break;
     }
       
@@ -83,6 +97,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
   }
 }
+
 
 
 void
@@ -104,6 +119,11 @@ sys_exit(int status) {
 bool
 sys_create (const char *file, unsigned initial_size) {
   return filesys_create(file, initial_size);
+}
+
+bool
+sys_remove (const char *file) {
+  return filesys_remove(file);
 }
 
 
@@ -139,3 +159,5 @@ check_address(void *address) {
     sys_exit(-1);
   }
 }
+
+
