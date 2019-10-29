@@ -200,15 +200,19 @@ sys_open(const char *file) {
   if (file == NULL) {
     sys_exit(-1);
   }
+  // lock_acquire(&filesys_lock);
   struct file *f = filesys_open(file);
   if (f == NULL) {
+    // lock_release(&filesys_lock);
     return -1;
   }
   else {
     if (strcmp(thread_current()->name, file) == 0) {
       file_deny_write(f);
     }
-    return process_add_file(f);
+    int fd = process_add_file(f);
+    // lock_release(&filesys_lock);
+    return fd;
   }
 }
 
@@ -237,21 +241,14 @@ sys_read (int fd, void *buffer, unsigned size) {
   }
   else {
     struct file *f = process_get_file(fd);
-    bool deny_write;
-    if(f->deny_write) {
-      deny_write = true;
-      // printf("\n\n\naa\n\n\n");
-    }
-    if(!(f->deny_write)) {
-      // printf("\n\n\nbb\n\n\n");
-    }
+
     real_size = file_read(f, buffer, size);
-    if(f->deny_write) {
-      // printf("\n\n\ncc\n\n\n");
-    }
+ 
     lock_release(&filesys_lock);
     return real_size;
   }
+  lock_release(&filesys_lock);
+
   return -1; 
 }
 
@@ -269,14 +266,7 @@ sys_write (int fd, const void *buffer, unsigned size) {
   }
   else {
     struct file *f = process_get_file(fd);
-    if(f->deny_write) {
-      // printf("\n\n\naa\n\n\n");
-    }
-    // printf(f);
-    // printf(thread_current()->running_file);
-    if(f == thread_current()->running_file){
-      // printf("\n\n\naa\n\n\n");      
-    }
+
     real_size = file_write(f, buffer, size);
     lock_release(&filesys_lock);
     return real_size;

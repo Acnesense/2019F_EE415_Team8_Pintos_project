@@ -242,10 +242,6 @@ int
 process_add_file (struct file *f) {
   struct thread *t_current = thread_current();
   t_current->fd_index++;
-  if(f->deny_write) {
-    // printf("\n\n\naa\n\n\n");
-  }
-  // printf("fd_index : %d", t_current->fd_index);
   t_current->fd_table[t_current->fd_index] = f;
   return t_current->fd_index;
 }
@@ -258,9 +254,6 @@ process_get_file(int fd) {
   for (i = 3; i < t_current->fd_index + 1 ; i++) {
     if (fd == i) {
       struct file *f = t_current->fd_table[i];
-      if(f->deny_write) {
-        // printf("\n\n\naa\n\n\n");
-      }
       return f;
     }
   }
@@ -390,10 +383,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
-  // printf("\n%s\n", file_name);
   file_deny_write(file);
   if(file->deny_write) {
-    // printf("\n\n\naa\n\n\n");
   }
   thread_current()->running_file = file;
 
