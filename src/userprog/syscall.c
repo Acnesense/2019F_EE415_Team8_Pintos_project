@@ -27,13 +27,14 @@ void sys_close (int fd);
 
 void check_address(void *address);
 static void syscall_handler (struct intr_frame *);
+struct lock *filesys_lock;
 
 
 void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
-  // lock_init(&filesys_lock);
+  lock_init(&filesys_lock);
 }
 
 static void
@@ -122,7 +123,14 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
       
     case SYS_SEEK:
-      break;
+      {
+        uint32_t *fd = f->esp + 4;
+        uint32_t *position = f->esp + 8;
+        check_address(fd);
+        check_address(position);
+        sys_seek((int) *fd, (unsigned) *position);
+        break;
+      }
     case SYS_TELL:
       {
         uint32_t *fd = f->esp + 4;
@@ -131,7 +139,12 @@ syscall_handler (struct intr_frame *f UNUSED)
         break;
       }
     case SYS_CLOSE:
-      break;
+      {
+        uint32_t *fd = f->esp + 4;
+        check_address(fd);
+        sys_close((int) *fd);
+        break;
+      }
   }
 }
 
@@ -226,25 +239,22 @@ sys_read (int fd, void *buffer, unsigned size) {
 int
 sys_write (int fd, const void *buffer, unsigned size) {
 
+  lock_acquire(&filesys_lock);
+
+  int i, real_size;
+
   if (fd == 1) {
     putbuf(buffer, size);
+    lock_release(&filesys_lock);
     return size;
   }
+  else {
+    struct file *f = process_get_file(fd);
+    real_size = file_write(f, buffer, size);
+    lock_release(&filesys_lock);
+    return real_size;
+  }
   return -1;
-
-  // // lock_acquire(&filesys_lock);
-
-  // int i, real_size;
-
-  // if (fd == 0) {
-  //   putbuf(buffer, size);
-  //   return size;
-  // }
-  // else {
-  //   struct file *f = process_get_file(fd);
-  //   return file_write(f, buffer, size);
-  // }
-  // return -1;
 
 }
 
@@ -265,6 +275,12 @@ sys_tell (int fd) {
   }
   return file_tell(f);
 }
+
+void
+sys_close (int fd) {
+  process_close_file(fd);
+}
+
 
 void
 check_address(void *address) {

@@ -237,9 +237,8 @@ remove_child_process(struct thread *cp) {
 int
 process_add_file (struct file *f) {
   struct thread *t_current = thread_current();
-  int index = t_current->fd_index;
-  t_current->fd_table[index] = f;
   t_current->fd_index++;
+  t_current->fd_table[t_current->fd_index] = f;
   return t_current->fd_index;
 }
 
@@ -248,7 +247,7 @@ process_get_file(int fd) {
   int i;
   struct thread *t_current = thread_current();
 
-  for (i = 2; i < sizeof(t_current->fd_table) ; i++) {
+  for (i = 3; i < t_current->fd_index + 1 ; i++) {
     if (fd == i) {
       struct file *f = t_current->fd_table[i];
       return f;
@@ -262,7 +261,7 @@ process_close_file(int fd) {
   struct thread *t_current = thread_current();
   struct file *f = t_current->fd_table[fd];
   file_close(f);
-  t_current->fd_table[fd] = 0;
+  t_current->fd_table[fd] = NULL;
 }
 
 
