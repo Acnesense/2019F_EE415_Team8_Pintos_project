@@ -212,28 +212,32 @@ sys_filesize (int fd) {
 
 int
 sys_read (int fd, void *buffer, unsigned size) {
-  int i;
-  if (fd == 0) {
-    for (i = 0; i < size; i ++) {
-      if (((char *)buffer)[i] == '\0') {
-        break;
-      }
-    }
-  }
-  return i;
-
-  // // lock_acquire(&filesys_lock);
-
-  // int i, real_size;
-
+  // int i;
   // if (fd == 0) {
-  //   return input_getc();
+  //   for (i = 0; i < size; i ++) {
+  //     if (((char *)buffer)[i] == '\0') {
+  //       break;
+  //     }
+  //   }
   // }
-  // else {
-  //   struct file *f = process_get_file(fd);
-  //   return file_read(f, buffer, size);
-  // }
-  // return -1; 
+  // return i;
+
+  lock_acquire(&filesys_lock);
+
+  int i, real_size;
+
+  if (fd == 0) {
+    real_size = input_getc();
+    lock_release(&filesys_lock);
+    return real_size;
+  }
+  else {
+    struct file *f = process_get_file(fd);
+    real_size = file_read(f, buffer, size);
+    lock_release(&filesys_lock);
+    return real_size;
+  }
+  return -1; 
 }
 
 int
@@ -254,6 +258,7 @@ sys_write (int fd, const void *buffer, unsigned size) {
     lock_release(&filesys_lock);
     return real_size;
   }
+
   return -1;
 
 }
