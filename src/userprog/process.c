@@ -53,8 +53,8 @@ process_execute (const char *file_name)
   cmd_name = strtok_r(cmd_name, " ", &save_ptr);
 
   /* Create a new thread to execute FILE_NAME. */
-  // if (filesys_open (cmd_name) == NULL)
-  //   return -1;
+  if (filesys_open (cmd_name) == NULL)
+    return -1;
   
   tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy);
   struct thread *child_process = get_child_process(tid);
@@ -66,12 +66,6 @@ process_execute (const char *file_name)
   return tid;
 }
 
-void parse_filename(char *src, char *dest) {
-  int i;
-  strlcpy(dest, src, strlen(src) + 1);
-  for (i=0; dest[i]!='\0' && dest[i] != ' '; i++);
-  dest[i] = '\0';
-}
 /* A thread function that loads a user process and starts it
    running. */
 static void
@@ -107,7 +101,8 @@ start_process (void *file_name_)
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) {
-    thread_exit ();
+    thread_current()->process_load = false;
+    sys_exit(-1);
   }
 
   /* Start the user process by simulating a return from an
