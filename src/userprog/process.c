@@ -23,6 +23,13 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 struct thread *get_child_process(int pid);
 void remove_child_process(struct thread *cp);
 
+struct file 
+  {
+    struct inode *inode;        /* File's inode. */
+    off_t pos;                  /* Current position. */
+    bool deny_write;            /* Has file_deny_write() been called? */
+  };
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -202,15 +209,12 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-
   int i;
-  struct thread *t_current = thread_current();
-  // for (i = 2; i < sizeof(cur->fd_table) ; i++) {
-  //   struct file *f = t_current->fd_table[i];
-  //   file_close(f);
-  //   t_current->fd_table[i] = NULL;
-  // }
-  // free(t_current->fd_table);
+  for (i = 3; i < 64; i++) {
+    if (thread_current()->fd_table[i] != NULL) {
+        sys_close(i);
+    }
+  }
 }
 
 struct thread *
@@ -238,6 +242,10 @@ int
 process_add_file (struct file *f) {
   struct thread *t_current = thread_current();
   t_current->fd_index++;
+  if(f->deny_write) {
+    // printf("\n\n\naa\n\n\n");
+  }
+  // printf("fd_index : %d", t_current->fd_index);
   t_current->fd_table[t_current->fd_index] = f;
   return t_current->fd_index;
 }
@@ -250,6 +258,9 @@ process_get_file(int fd) {
   for (i = 3; i < t_current->fd_index + 1 ; i++) {
     if (fd == i) {
       struct file *f = t_current->fd_table[i];
+      if(f->deny_write) {
+        // printf("\n\n\naa\n\n\n");
+      }
       return f;
     }
   }
@@ -260,11 +271,12 @@ void
 process_close_file(int fd) {
   struct thread *t_current = thread_current();
   struct file *f = t_current->fd_table[fd];
+  if (f == NULL) {
+    sys_exit(-1);
+  }
   file_close(f);
   t_current->fd_table[fd] = NULL;
 }
-
-
 
 /* Sets up the CPU for running user code in the current
    thread.
@@ -378,6 +390,12 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+  // printf("\n%s\n", file_name);
+  file_deny_write(file);
+  if(file->deny_write) {
+    // printf("\n\n\naa\n\n\n");
+  }
+  thread_current()->running_file = file;
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr

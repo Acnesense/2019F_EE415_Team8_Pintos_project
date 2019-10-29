@@ -8,6 +8,8 @@
 #include "threads/synch.h"
 #include "userprog/process.h"
 #include <syscall-nr.h>
+#include "filesys/file.h"
+
 
 typedef int pid_t;
 
@@ -29,6 +31,12 @@ void check_address(void *address);
 static void syscall_handler (struct intr_frame *);
 struct lock *filesys_lock;
 
+struct file 
+  {
+    struct inode *inode;        /* File's inode. */
+    off_t pos;                  /* Current position. */
+    bool deny_write;            /* Has file_deny_write() been called? */
+  };
 
 void
 syscall_init (void) 
@@ -197,6 +205,9 @@ sys_open(const char *file) {
     return -1;
   }
   else {
+    if (strcmp(thread_current()->name, file) == 0) {
+      file_deny_write(f);
+    }
     return process_add_file(f);
   }
 }
@@ -226,7 +237,18 @@ sys_read (int fd, void *buffer, unsigned size) {
   }
   else {
     struct file *f = process_get_file(fd);
+    bool deny_write;
+    if(f->deny_write) {
+      deny_write = true;
+      // printf("\n\n\naa\n\n\n");
+    }
+    if(!(f->deny_write)) {
+      // printf("\n\n\nbb\n\n\n");
+    }
     real_size = file_read(f, buffer, size);
+    if(f->deny_write) {
+      // printf("\n\n\ncc\n\n\n");
+    }
     lock_release(&filesys_lock);
     return real_size;
   }
@@ -247,6 +269,14 @@ sys_write (int fd, const void *buffer, unsigned size) {
   }
   else {
     struct file *f = process_get_file(fd);
+    if(f->deny_write) {
+      // printf("\n\n\naa\n\n\n");
+    }
+    // printf(f);
+    // printf(thread_current()->running_file);
+    if(f == thread_current()->running_file){
+      // printf("\n\n\naa\n\n\n");      
+    }
     real_size = file_write(f, buffer, size);
     lock_release(&filesys_lock);
     return real_size;
