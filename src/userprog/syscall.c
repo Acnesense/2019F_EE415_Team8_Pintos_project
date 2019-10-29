@@ -212,15 +212,8 @@ sys_filesize (int fd) {
 
 int
 sys_read (int fd, void *buffer, unsigned size) {
-  // int i;
-  // if (fd == 0) {
-  //   for (i = 0; i < size; i ++) {
-  //     if (((char *)buffer)[i] == '\0') {
-  //       break;
-  //     }
-  //   }
-  // }
-  // return i;
+  check_address((uint32_t *) buffer);
+  // check_address((uint32_t *) buffer + size - 1);
 
   lock_acquire(&filesys_lock);
 
