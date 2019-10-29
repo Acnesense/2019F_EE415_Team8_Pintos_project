@@ -202,6 +202,15 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+
+  int i;
+  struct thread *t_current = thread_current();
+  // for (i = 2; i < sizeof(cur->fd_table) ; i++) {
+  //   struct file *f = t_current->fd_table[i];
+  //   file_close(f);
+  //   t_current->fd_table[i] = NULL;
+  // }
+  // free(t_current->fd_table);
 }
 
 struct thread *
@@ -224,6 +233,39 @@ remove_child_process(struct thread *cp) {
   list_remove(&cp->child_elem);
   palloc_free_page(cp);
 }
+
+int
+process_add_file (struct file *f) {
+  struct thread *t_current = thread_current();
+  int index = t_current->fd_index;
+  t_current->fd_table[index] = f;
+  t_current->fd_index++;
+  return t_current->fd_index;
+}
+
+struct file *
+process_get_file(int fd) {
+  int i;
+  struct thread *t_current = thread_current();
+
+  for (i = 2; i < sizeof(t_current->fd_table) ; i++) {
+    if (fd == i) {
+      struct file *f = t_current->fd_table[i];
+      return f;
+    }
+  }
+  return NULL;
+}
+
+void
+process_close_file(int fd) {
+  struct thread *t_current = thread_current();
+  struct file *f = t_current->fd_table[fd];
+  file_close(f);
+  t_current->fd_table[fd] = 0;
+}
+
+
 
 /* Sets up the CPU for running user code in the current
    thread.

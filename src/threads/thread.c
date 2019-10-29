@@ -207,6 +207,8 @@ thread_create (const char *name, int priority,
   sema_init(&(t->exit_sema), 0);
   sema_init(&(t->load_sema), 0);
   list_push_back (&(running_thread()->child_list), &(t->child_elem));
+  t->fd_index = 2;
+
 #endif
   /* Add to run queue. */
   thread_unblock (t);
@@ -291,19 +293,19 @@ void
 thread_exit (void) 
 {
   ASSERT (!intr_context ());
+  struct thread *t = thread_current();
 
 #ifdef USERPROG
   process_exit ();
+  t->process_exit = true;
+  sema_up(&t->exit_sema);
 #endif
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
-  struct thread *t = thread_current();
   list_remove (&t->allelem);
-  t->process_exit = true;
-  sema_up(&t->exit_sema);
 
   t->status = THREAD_DYING;
   schedule ();

@@ -5,16 +5,17 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "devices/shutdown.h"
+#include "threads/synch.h"
 #include "userprog/process.h"
 #include <syscall-nr.h>
 
 typedef int pid_t;
 
-void sys_halt (void);
-void sys_exit (int status);
-pid_t sys_exec (const char *file);
-int sys_wait (tid_t);
-bool sys_create (const char *file, unsigned initial_size);
+void sys_halt (void); // pass
+void sys_exit (int status); // pass
+pid_t sys_exec (const char *file); // pass
+int sys_wait (tid_t); // pass
+bool sys_create (const char *file, unsigned initial_size); // pass
 bool sys_remove (const char *file);
 int sys_open (const char *file);
 int sys_filesize (int fd);
@@ -32,6 +33,7 @@ void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  // lock_init(&filesys_lock);
 }
 
 static void
@@ -63,7 +65,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       uint32_t *pid = f->esp + 4;
       check_address(pid);
       f->eax = sys_wait ((pid_t) *pid);
-      break;     
+      break;
     }
 
     case SYS_CREATE:
@@ -82,10 +84,20 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = sys_remove((const char *) *file);
       break;
     }
-    case SYS_OPEN:                   
+    case SYS_OPEN:
+    {
+      uint32_t *file = f->esp + 4;
+      check_address(file);
+      f->eax = sys_open((const char *) *file);
       break;
+    }                
     case SYS_FILESIZE:
+    {
+      uint32_t *fd = f->esp + 4;
+      check_address(fd);
+      f->eax = sys_filesize((int) *fd);
       break;
+    }
     case SYS_READ:
     {
       uint32_t *fd = f->esp + 4;
@@ -112,7 +124,12 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_SEEK:
       break;
     case SYS_TELL:
-      break;
+      {
+        uint32_t *fd = f->esp + 4;
+        check_address(fd);
+        f->eax = sys_tell((int) *fd);
+        break;
+      }
     case SYS_CLOSE:
       break;
   }
@@ -158,29 +175,95 @@ sys_remove (const char *file) {
 }
 
 int
-sys_read (int fd, void *buffer, unsigned size) {
+sys_open(const char *file) {
+  if (file == NULL) {
+    sys_exit(-1);
+  }
+  struct file *f = filesys_open(file);
+  if (f == NULL) {
+    return -1;
+  }
+  else {
+    return process_add_file(f);
+  }
+}
 
-  int i, real_size;
+int
+sys_filesize (int fd) {
+  struct file *f = process_get_file(fd);
+  if (f == NULL) {
+    return -1;
+  }
+  return file_length(f);
+}
+
+int
+sys_read (int fd, void *buffer, unsigned size) {
+  int i;
   if (fd == 0) {
-    for (i = 0, real_size = 0; i < size; i++){
-      if (((char *)buffer)[i] == '\0'){
+    for (i = 0; i < size; i ++) {
+      if (((char *)buffer)[i] == '\0') {
         break;
       }
-      real_size++;
     }
-    return real_size;
   }
-  return -1; 
+  return i;
 
+  // // lock_acquire(&filesys_lock);
+
+  // int i, real_size;
+
+  // if (fd == 0) {
+  //   return input_getc();
+  // }
+  // else {
+  //   struct file *f = process_get_file(fd);
+  //   return file_read(f, buffer, size);
+  // }
+  // return -1; 
 }
 
 int
 sys_write (int fd, const void *buffer, unsigned size) {
+
   if (fd == 1) {
     putbuf(buffer, size);
     return size;
   }
-  return -1; 
+  return -1;
+
+  // // lock_acquire(&filesys_lock);
+
+  // int i, real_size;
+
+  // if (fd == 0) {
+  //   putbuf(buffer, size);
+  //   return size;
+  // }
+  // else {
+  //   struct file *f = process_get_file(fd);
+  //   return file_write(f, buffer, size);
+  // }
+  // return -1;
+
+}
+
+void
+sys_seek (int fd, unsigned position) {
+  struct file *f = process_get_file(fd);
+  if (f == NULL) {
+    return -1;
+  }
+  file_seek(f, position);
+}
+
+unsigned
+sys_tell (int fd) {
+  struct file *f = process_get_file(fd);
+  if (f == NULL) {
+    return -1;
+  }
+  return file_tell(f);
 }
 
 void

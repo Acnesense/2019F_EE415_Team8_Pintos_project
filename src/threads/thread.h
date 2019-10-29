@@ -109,6 +109,8 @@ struct thread
     struct semaphore load_sema;
     
     int exit_status;
+    int *fd_table[64];
+    int fd_index;
 
 #endif
 
