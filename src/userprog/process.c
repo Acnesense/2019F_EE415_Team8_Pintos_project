@@ -41,6 +41,8 @@ process_execute (const char *file_name)
   tid_t tid;
   char *save_ptr;
   char *cmd_name;
+  struct list_elem* e;
+  struct thread* t;
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -55,6 +57,17 @@ process_execute (const char *file_name)
   /* Create a new thread to execute FILE_NAME. */
   
   tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy);
+  if (tid == TID_ERROR)
+    palloc_free_page (fn_copy);
+    palloc_free_page (cmd_name);
+
+  struct thread *child_process = get_child_process(tid);
+    if (child_process == NULL)
+      return -1;
+    sema_down(&child_process->load_sema);
+    if (!(child_process -> process_load)) 
+      return -1;
+
 
   return tid;
 }
@@ -68,7 +81,6 @@ start_process (void *file_name_)
   struct intr_frame if_;
   char *cmd_line;
   bool success;
-  char cmd_name[256]; // 4KB
 
   char *token, *save_ptr;
   int argc = 0;
@@ -98,6 +110,9 @@ start_process (void *file_name_)
     thread_current()->process_load = false;
     sys_exit(-1);
   }
+
+  palloc_free_page(cmd_line);
+
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in

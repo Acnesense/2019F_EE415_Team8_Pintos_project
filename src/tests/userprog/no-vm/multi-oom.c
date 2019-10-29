@@ -118,7 +118,6 @@ main (int argc, char *argv[])
       consume_some_resources_and_die (n);
       NOT_REACHED ();
     }
-
   int howmany = is_at_root ? EXPECTED_REPETITIONS : 1;
   int i, expected_depth = -1;
 
@@ -165,7 +164,7 @@ main (int argc, char *argv[])
     }
 
   consume_some_resources ();
-
+  printf("\n\n%d\n\n", n);
   if (n == 0)
     {
       if (expected_depth < EXPECTED_DEPTH_TO_PASS)

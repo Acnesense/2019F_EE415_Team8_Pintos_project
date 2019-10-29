@@ -109,7 +109,7 @@ struct thread
     struct semaphore load_sema;
     
     int exit_status;
-    struct file *fd_table[64];
+    struct file *fd_table[200];
     int fd_index;
 
     struct file *running_file;

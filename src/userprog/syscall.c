@@ -172,12 +172,7 @@ pid_t
 sys_exec (const char *cmd_line) {
   int pid;
   pid = process_execute(cmd_line);
-  struct thread *child_process = get_child_process(pid);
-  if (child_process == NULL)
-    return -1;
-  sema_down(&child_process->load_sema);
-  if (!(child_process -> process_load)) 
-    return -1;
+
   return pid;
 }
 
