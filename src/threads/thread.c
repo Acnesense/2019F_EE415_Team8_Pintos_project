@@ -206,6 +206,17 @@ thread_create (const char *name, int priority,
 
   intr_set_level (old_level);
 
+  t->parent=thread_current();
+  t->process_loaded=false;
+  t->process_exited=false;
+  t->exit_status=0;
+    
+
+  list_push_back(&thread_current()->child,&t->childelem);
+  
+  t->next_fd=3;
+  
+  
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -292,6 +303,8 @@ thread_exit (void)
 
 #ifdef USERPROG
   process_exit ();
+  thread_current()->process_exited=true;  
+  sema_up(&thread_current()->exit_lock);
 #endif
 
   /* Remove thread from all threads list, set our status to dying,
@@ -468,8 +481,15 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  
+  list_init(&t->child);  
+  sema_init(&t->exit_lock,0);
+  sema_init(&t->load_lock,0);
+	
+  
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
+  
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -541,7 +561,7 @@ thread_schedule_tail (struct thread *prev)
   if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) 
     {
       ASSERT (prev != cur);
-      palloc_free_page (prev);
+      //palloc_free_page (prev);
     }
 }
 

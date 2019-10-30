@@ -26,6 +26,26 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
+   
+ 
+struct thread * get_child_process(int pid)
+{
+	struct list_elem * dum=list_begin(&thread_current()->child);
+	while(dum!=list_end(&thread_current()->child))
+	{
+		struct thread * dum_t=list_entry(dum,struct thread, childelem);
+		if(dum_t->tid==pid) return dum_t;
+		dum=list_next(dum);
+	}
+	return NULL;
+}
+
+void remove_child_process(struct thread *cp)
+{
+	list_remove(&cp->childelem);
+	palloc_free_page(cp);
+}
+ 
 tid_t
 process_execute (const char *file_name) 
 {
@@ -71,10 +91,11 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (token, &if_.eip, &if_.esp);
-
+  sema_up(&thread_current()->load_lock);
   
   if(success)
   {
+	  thread_current()->process_loaded=true;
 	  //get argc
 	  int proc_argc=0;
 	  while(token!=NULL)
@@ -96,7 +117,8 @@ start_process (void *file_name_)
 	  }
 	  //push arguments
 	  int total_len=0;
-	  for(int i=proc_argc-1;i>=0;i--)
+	  int i;
+	  for(i=proc_argc-1;i>=0;i--)
 	  {
 		  int len=strlen(proc_argv[i]);
 		  if_.esp-=len+1;
@@ -110,7 +132,7 @@ start_process (void *file_name_)
 	  if_.esp -= 4;
       *(uint32_t *) if_.esp = 0;
 	  //push arguments' address
-	  for(int i=proc_argc-1;i>=0;i--)
+	  for(i=proc_argc-1;i>=0;i--)
 	  {
 		if_.esp-=4;
 		*(uint32_t *) if_.esp=proc_argv[i];
@@ -129,10 +151,13 @@ start_process (void *file_name_)
   }
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
+  if (!success)
+  {
+	thread_current()->process_loaded=true;
     thread_exit ();
+  }
+  //hex_dump(if_.esp, if_.esp, PHYS_BASE -if_.esp,true);
   
-  hex_dump(if_.esp, if_.esp, PHYS_BASE -if_.esp,true);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -156,7 +181,13 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-  return -1;
+  int dum;
+  struct thread * child=get_child_process(child_tid);
+  if(child==NULL) return -1;
+  sema_down(&child->exit_lock);
+  dum=child->exit_status;
+  remove_child_process(child);
+  return dum;
 }
 
 /* Free the current process's resources. */
@@ -181,6 +212,13 @@ process_exit (void)
       cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
+	  int i;
+	  for(i=3;i<64;i++)
+	  {
+		  struct file * dum=cur->fdt[i];
+		  if(dum!=NULL) file_close(dum);
+		  cur->fdt[i]=NULL;
+	  }
     }
 }
 
@@ -198,6 +236,14 @@ process_activate (void)
   /* Set thread's kernel stack for use in processing
      interrupts. */
   tss_update ();
+}
+
+int process_add_file(struct file* f)
+{
+	struct thread * cur=thread_current();
+	cur->fdt[cur->next_fd]=f;
+	cur->next_fd++;
+	return (cur->next_fd-1);
 }
 
 /* We load ELF binaries.  The following definitions are taken
@@ -296,7 +342,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
-
+	
+  file_deny_write(file);
+  thread_current()->file_running=file;
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
