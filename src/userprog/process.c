@@ -1,4 +1,5 @@
 #include "userprog/process.h"
+#include "hash.h"
 #include <debug.h>
 #include <inttypes.h>
 #include <round.h>
@@ -17,6 +18,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "vm/page.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -93,6 +95,9 @@ start_process (void *file_name_)
   argc++;
   
   /* Initialize interrupt frame and load executable. */
+  // struct thread *cur = thread_current();
+  // struct hash *exam;
+  // hash_init(&cur->vm, NULL, NULL, NULL);
 
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -208,6 +213,13 @@ process_exit (void)
   if(!list_empty(&cur->mmap_list)){
     printf("\n\nthis list is not empty\n\n");
   }
+  if(!list_empty(&cur->page_entry_list)){
+    printf("\n\nthis list is not empty\n\n");
+  }
+
+  destroy_vme(&cur->page_entry_list);
+
+  
   pd = cur->pagedir;
   if (pd != NULL) 
     {

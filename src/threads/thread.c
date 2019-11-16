@@ -484,10 +484,10 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&all_list, &t->allelem);
 #ifdef USERPROG
   list_init (&(t->child_list));
-
 #endif
 
-
+  list_init (&(t->mmap_list));
+  list_init (&(t->page_entry_list));
   intr_set_level (old_level);
 }
 

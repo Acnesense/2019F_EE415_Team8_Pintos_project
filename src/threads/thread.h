@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <hash.h>
 #include "threads/synch.h"
 
 
@@ -115,7 +116,8 @@ struct thread
     struct file *running_file;
 
 #endif
-
+    struct list mmap_list;
+    struct list page_entry_list;
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
