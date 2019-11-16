@@ -406,9 +406,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
-  file_deny_write(file);
-  if(file->deny_write) {
-  }
   thread_current()->running_file = file;
 
   /* Read and verify executable header. */
