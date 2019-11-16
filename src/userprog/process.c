@@ -214,11 +214,9 @@ process_exit (void)
     printf("\n\nthis list is not empty\n\n");
   }
   if(!list_empty(&cur->page_entry_list)){
-    printf("\n\nthis list is not empty\n\n");
+    printf("\n\nthis page list is not empty\n\n");
   }
-
   destroy_vme(&cur->page_entry_list);
-
   
   pd = cur->pagedir;
   if (pd != NULL) 
@@ -580,6 +578,18 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
+      struct vm_entry *vme;
+      vme = malloc(sizeof(struct vm_entry));
+      vme->vaddr = upage;
+      vme->offset = ofs;
+      vme->read_bytes = page_read_bytes;
+      vme->zero_bytes = page_zero_bytes;
+      vme->file = file;
+      vme->is_loaded = false;
+      vme->writable = writable;
+      vme->type = VM_BIN;
+      insert_vme(&thread_current()->page_entry_list, vme);
+
       /* Get a page of memory. */
       uint8_t *kpage = palloc_get_page (PAL_USER);
       if (kpage == NULL)
@@ -603,6 +613,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
+      ofs += page_read_bytes;
       upage += PGSIZE;
     }
   return true;
@@ -625,6 +636,13 @@ setup_stack (void **esp)
       else
         palloc_free_page (kpage);
     }
+
+  struct vm_entry *vme;
+  vme = malloc(sizeof(struct vm_entry));
+  vme->vaddr = PHYS_BASE - PGSIZE;
+  vme->is_loaded = false;
+  vme->type = VM_BIN;
+  insert_vme(&thread_current()->page_entry_list, vme);
   return success;
 }
 
