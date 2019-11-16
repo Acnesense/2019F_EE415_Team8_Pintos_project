@@ -209,13 +209,9 @@ thread_create (const char *name, int priority,
   t->parent=thread_current();
   t->process_loaded=false;
   t->process_exited=false;
-  t->exit_status=0;
-    
+  t->exit_status=0;    
 
-  list_push_back(&thread_current()->child,&t->childelem);
-  
-  t->next_fd=3;
-  
+  list_push_back(&thread_current()->child,&t->childelem);  
   
   /* Add to run queue. */
   thread_unblock (t);
@@ -485,7 +481,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->child);  
   sema_init(&t->exit_lock,0);
   sema_init(&t->load_lock,0);
-	
+  t->next_fd=3;
   
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);

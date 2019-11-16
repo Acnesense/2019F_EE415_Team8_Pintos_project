@@ -50,13 +50,14 @@ tid_t
 process_execute (const char *file_name) 
 {
   char *fn_copy;
-  char cpy_file_name[256];
+  char *cpy_file_name;
   char * proc_name;
   tid_t tid;
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
+  cpy_file_name = malloc(256);
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
@@ -67,6 +68,12 @@ process_execute (const char *file_name)
   tid = thread_create (proc_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+  free(cpy_file_name);
+  struct thread * child=get_child_process(tid);
+  if(child==NULL) return -1;
+  sema_down(&child->load_lock);
+  if(!child->process_loaded) return -1;
+  
   return tid;
 }
 
@@ -76,12 +83,14 @@ static void
 start_process (void *file_name_)
 {
   char *file_name = file_name_;
-  char cpy_file_name[256];
+  char *cpy_file_name;
   char * token;
   struct intr_frame if_;
   bool success;
   
   char * save_ptr;
+  
+  cpy_file_name=malloc(256);
   strlcpy(cpy_file_name,file_name,strlen(file_name)+1);
   token=strtok_r(cpy_file_name," ", &save_ptr);
   
@@ -91,7 +100,6 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (token, &if_.eip, &if_.esp);
-  sema_up(&thread_current()->load_lock);
   
   if(success)
   {
@@ -151,11 +159,14 @@ start_process (void *file_name_)
   }
   /* If load failed, quit. */
   palloc_free_page (file_name);
+  free(cpy_file_name);
+  sema_up(&thread_current()->load_lock);
   if (!success)
   {
-	thread_current()->process_loaded=true;
-    thread_exit ();
+	thread_current()->process_loaded=false;
+    syscall_exit (-1);
   }
+  
   //hex_dump(if_.esp, if_.esp, PHYS_BASE -if_.esp,true);
   
 
@@ -196,7 +207,15 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
+  
+  int i;
+  for(i=3;i<128;i++)
+  {
+    struct file * dum=cur->fdt[i];
+	if(dum!=NULL) file_close(dum);
+	cur->fdt[i]=NULL;
+  }
+	  
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -212,13 +231,6 @@ process_exit (void)
       cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
-	  int i;
-	  for(i=3;i<64;i++)
-	  {
-		  struct file * dum=cur->fdt[i];
-		  if(dum!=NULL) file_close(dum);
-		  cur->fdt[i]=NULL;
-	  }
     }
 }
 
