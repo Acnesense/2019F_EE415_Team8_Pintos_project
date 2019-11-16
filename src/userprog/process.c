@@ -210,12 +210,12 @@ process_exit (void)
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
 
-  if(!list_empty(&cur->mmap_list)){
-    printf("\n\nthis list is not empty\n\n");
-  }
-  if(!list_empty(&cur->page_entry_list)){
-    printf("\n\nthis page list is not empty\n\n");
-  }
+  // if(!list_empty(&cur->mmap_list)){
+  //   printf("\n\nthis list is not empty\n\n");
+  // }
+  // if(!list_empty(&cur->page_entry_list)){
+  //   printf("\n\nthis page list is not empty\n\n");
+  // }
   destroy_vme(&cur->page_entry_list);
   
   pd = cur->pagedir;

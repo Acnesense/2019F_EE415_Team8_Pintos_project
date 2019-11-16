@@ -27,7 +27,7 @@ void sys_seek (int fd, unsigned position);
 unsigned sys_tell (int fd);
 void sys_close (int fd);
 
-void check_address(void *address);
+struct vm_entry *check_address(void *address);
 static void syscall_handler (struct intr_frame *);
 struct lock *filesys_lock;
 
@@ -301,11 +301,27 @@ sys_close (int fd) {
 }
 
 
-void
+struct vm_entry*
 check_address(void *address) {
-  if (!is_user_vaddr(address)) {
-    sys_exit(-1);
-  }
+  struct thread *cur = thread_current();
+  if (address < (void *)0x08048000 || address >= (void *)0xc0000000)
+    {
+      sys_exit(-1);
+    }
+  return find_vme(&cur->page_entry_list, address);
 }
+
+// struct vm_entry*
+// check_address(void *address) {
+//   struct thread *cur = thread_current();
+
+//   if (address < (void *)0x08048000 || address >= (void *)0xc0000000)
+//     {
+//       sys_exit(-1);
+//     }
+  
+//   return find_vme(&cur->page_entry_list, address);
+// }
+
 
 
