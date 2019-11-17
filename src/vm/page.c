@@ -151,3 +151,26 @@ install_page (void *upage, void *kpage, bool writable)
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
 
+
+bool
+expand_stack (void *vaddr) {
+  uint8_t *kpage;
+  struct vm_entry *vme = malloc(sizeof(struct vm_entry));
+
+  vme->vaddr = pg_round_down(vaddr);
+  vme->is_loaded = false;
+  vme->type = VM_BIN;
+  insert_vme(&thread_current()->page_entry_list, vme);
+
+  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  if (kpage != NULL) 
+    {
+      if (!(install_page (vme->vaddr, kpage, true))) {
+        palloc_free_page (kpage);
+        goto fail;
+      }
+    }
+  return true;
+fail:
+  return false;
+}

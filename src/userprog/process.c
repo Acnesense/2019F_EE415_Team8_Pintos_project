@@ -605,7 +605,6 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
-  grow_stack(((uint8_t *) PHYS_BASE) - PGSIZE);
   struct vm_entry *vme;
   vme = malloc(sizeof(struct vm_entry));
   vme->vaddr = pg_round_down(((uint8_t *) PHYS_BASE) - PGSIZE);
@@ -624,10 +623,6 @@ setup_stack (void **esp)
     }
 
   return success;
-}
-
-void grow_stack (void *uva) {
-  // printf("stack : %d \n\n", uva);
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel

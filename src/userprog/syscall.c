@@ -424,7 +424,7 @@ do_munmap(struct mmap_file *mmap_f) {
 struct vm_entry*
 check_address(void *address) {
   struct thread *cur = thread_current();
-  if (address < (void *)0x08048000 || address >= (void *)0xc0000000)
+  if (!is_user_vaddr(address))
     {
       sys_exit(-1);
     }

@@ -10,6 +10,9 @@
 #define VM_BIN 0
 #define VM_FILE 1
 #define VM_ANON 2
+
+#define MAX_STACK_SIZE (1 << 23)
+
 struct lock *filesys_lock;
 
 
