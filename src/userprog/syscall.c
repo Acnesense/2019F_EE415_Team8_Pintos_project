@@ -70,6 +70,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       get_arg(f->esp, &arg, 1);
       f->eax = sys_exec(arg[0]);
       break;
+
     }
     case SYS_WAIT:
     {
@@ -165,8 +166,12 @@ sys_exit(int status) {
 pid_t
 sys_exec (const char *cmd_line) {
   int pid;
+  struct thread *cur = thread_current ();
+  // if(!list_empty(&cur->mmap_list)){
+  //   printf("\n\nexec this list is not empty\n\n");
+  // }
+  // printf("exec %d\n", thread_tid());
   pid = process_execute(cmd_line);
-
   return pid;
 }
 
@@ -195,6 +200,7 @@ sys_open(const char *file) {
   if (file == NULL) {
     sys_exit(-1);
   }
+
   lock_acquire(&filesys_lock);
   struct file *f = filesys_open(file);
   if (f == NULL) {
@@ -251,6 +257,7 @@ int
 sys_write (int fd, const void *buffer, unsigned size) {
 
   lock_acquire(&filesys_lock);
+
 
   int i, real_size;
 
@@ -353,7 +360,7 @@ sys_mmap (int *fd, void *addr) {
     vme->is_loaded = false;
     vme->writable = true;
     vme->type = VM_FILE;
-    // printf("%d\n", vme->vaddr);
+
     list_push_back(&(mmap_f->vme_list), &(vme->mmap_elem));
     list_push_back(&(cur->page_entry_list), &(vme->page_entry_elem));
   }
@@ -362,6 +369,7 @@ sys_mmap (int *fd, void *addr) {
   mmap_f->mapid = cur->max_mid;
   list_push_back(&(cur->mmap_list), &(mmap_f->elem));
   lock_release(&filesys_lock);
+
   return cur->max_mid;
 
 mmap_fail:
@@ -375,9 +383,8 @@ sys_munmap(int *mapid) {
   struct thread *cur = thread_current();
   struct list_elem *e;
 
-  for (e = list_begin (&cur->mmap_list); e != list_end (&cur->mmap_list) && !list_empty(&cur->mmap_list);
-   e = list_next (e))
-  {
+  while(!list_empty(&cur->mmap_list)) {
+    e = list_begin (&cur->mmap_list);
     struct mmap_file *mmap_f = list_entry (e, struct mmap_file, elem);
     if (mmap_f->mapid == mapid) {
       do_munmap(mmap_f);
@@ -386,6 +393,7 @@ sys_munmap(int *mapid) {
     file_close(mmap_f->file);
     free(mmap_f);
   }
+
 
 
 }
@@ -404,25 +412,12 @@ do_munmap(struct mmap_file *mmap_f) {
       file_write_at(vme->file, vme->vaddr, vme->read_bytes, vme->offset);
       lock_release(&filesys_lock);
     }
+    pagedir_clear_page(cur->pagedir, vme->vaddr);
     list_remove(&vme->mmap_elem);
     list_remove(&vme->page_entry_elem);
     free(vme);
   }
 
-  // for (mmap_e = list_begin (&mmap_f->vme_list); mmap_e != list_end(&mmap_f->vme_list);
-  //                                                       mmap_e = list_next(mmap_e)) {
-  //   printf("mmap e for loop");                                                 
-  //   struct vm_entry *vme = list_entry(mmap_e, struct vm_entry, mmap_elem);
-  //   printf("do munmap : %d\n", vme->vaddr);
-    
-  //   ASSERT(vme->is_loaded);
-  //   if (pagedir_is_dirty(cur->pagedir, vme->vaddr)){
-  //     file_write_at(vme->file, vme->vaddr, vme->read_bytes, vme->offset);
-  //   }
-  //   list_remove(&vme->mmap_elem);
-  //   list_remove(&vme->page_entry_elem);
-  //   free(vme);
-  // }
 }
 
 struct vm_entry*
@@ -439,6 +434,7 @@ void
 check_valid_buffer (void * buffer, unsigned size, bool to_write) {
   void *upage;
   struct vm_entry *vme;
+
   for (upage = pg_round_down(buffer);upage < buffer + size; upage += PGSIZE) {
     vme = check_address(upage);
     handle_mm_fault(vme);

@@ -48,7 +48,6 @@ destroy_vme (struct list *page_entry_list) {
     while(!list_empty(page_entry_list)) {
         e = list_begin(page_entry_list);
         vme = list_entry (e, struct vm_entry, page_entry_elem);
-        // printf("destroy vme : %d\n", vme->vaddr);
         list_remove(e);
         free(vme);
     }
@@ -59,7 +58,6 @@ destroy_mmap_list (struct list *mmap_list) {
     struct thread *cur = thread_current ();
     struct list_elem *e;
     while(!list_empty(mmap_list)) {
-        // printf("\n\n 12345 \n\n");
         e = list_begin(mmap_list);
         struct mmap_file *mmap_f = list_entry (e, struct mmap_file, elem);
         destroy_vme(&mmap_f->vme_list);
@@ -85,7 +83,6 @@ handle_mm_fault (struct vm_entry *vme) {
         case VM_BIN:
         {
             if (!load_file(kpage, vme)) {
-                // printf("laodfilem");
                 return false;
             }
             if (!install_page (vme->vaddr, kpage, vme->writable)) {
@@ -114,18 +111,15 @@ load_file (void *kaddr, struct vm_entry *vme) {
     // printf("%d\n", vme->vaddr);
 
     if(vme->file == NULL) {
-        // printf("read1\n");
         return false;
     }
     if((int)vme->offset < 0) {
-        // printf("read2\n");
         return false;
     }
     lock_acquire(&filesys_lock);
     file_seek (vme->file, vme->offset);
     int read = file_read(vme->file, kaddr, vme->read_bytes);
     if (read != (int) vme->read_bytes) {
-        // printf("read\n");
         lock_release(&filesys_lock);
 
         return false;

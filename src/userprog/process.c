@@ -206,18 +206,18 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
-  /* Destroy the current process's page directory and switch back
-     to the kernel-only page directory. */
-
-  // if(!list_empty(&cur->mmap_list)){
-  //   printf("\n\nthis list is not empty\n\n");
+  // struct list_elem *e;
+  // struct vm_entry *vme;
+  // // struct thread *cur = thread_current();
+  // printf("load_segment : %d\n", thread_tid());
+  // for (e = list_begin (&cur->page_entry_list); e != list_end (&cur->page_entry_list) && !list_empty(&cur->page_entry_list);
+  //  e = list_next (e))
+  // {
+  //   vme = list_entry (e, struct vm_entry, page_entry_elem);
+  //   printf("vme : %d\n", vme->vaddr);
   // }
-  // if(!list_empty(&cur->page_entry_list)){
-  //   printf("\n\nthis page list is not empty\n\n");
-  // }
+
   destroy_vme(&cur->page_entry_list);
-  destory_mmap_list(&cur->mmap_list);
 
   pd = cur->pagedir;
   if (pd != NULL) 
@@ -566,7 +566,13 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
-
+  struct thread *cur = thread_current();
+  // if(!list_empty(&cur->mmap_list)){
+  //   printf("\n\nthis list is not empty\n\n");
+  // }
+  // if(!list_empty(&cur->page_entry_list)){
+  //   printf("\n\nthis page list is not empty\n\n");
+  // }
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
@@ -586,27 +592,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       vme->is_loaded = false;
       vme->writable = writable;
       vme->type = VM_BIN;
-      insert_vme(&thread_current()->page_entry_list, vme);
-      // printf("%d\n", vme->vaddr);
-      // /* Get a page of memory. */
-      // uint8_t *kpage = palloc_get_page (PAL_USER);
-      // if (kpage == NULL)
-      //   return false;
-
-      // /* Load this page. */
-      // if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-      //   {
-      //     palloc_free_page (kpage);
-      //     return false; 
-      //   }
-      // memset (kpage + page_read_bytes, 0, page_zero_bytes);
-
-      // /* Add the page to the process's address space. */
-      // if (!install_page (upage, kpage, writable)) 
-      //   {
-      //     palloc_free_page (kpage);
-      //     return false; 
-      //   }
+      list_push_back(&thread_current()->page_entry_list, &vme->page_entry_elem);
 
       /* Advance. */
       read_bytes -= page_read_bytes;
@@ -624,6 +610,13 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
+  grow_stack(((uint8_t *) PHYS_BASE) - PGSIZE);
+  struct vm_entry *vme;
+  vme = malloc(sizeof(struct vm_entry));
+  vme->vaddr = pg_round_down(((uint8_t *) PHYS_BASE) - PGSIZE);
+  vme->is_loaded = false;
+  vme->type = VM_BIN;
+  insert_vme(&thread_current()->page_entry_list, vme);
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
@@ -635,13 +628,11 @@ setup_stack (void **esp)
         palloc_free_page (kpage);
     }
 
-  struct vm_entry *vme;
-  vme = malloc(sizeof(struct vm_entry));
-  vme->vaddr = PHYS_BASE - PGSIZE;
-  vme->is_loaded = false;
-  vme->type = VM_BIN;
-  insert_vme(&thread_current()->page_entry_list, vme);
   return success;
+}
+
+void grow_stack (void *uva) {
+  // printf("stack : %d \n\n", uva);
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel
