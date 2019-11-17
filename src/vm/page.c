@@ -58,6 +58,9 @@ handle_mm_fault (struct vm_entry *vme) {
     if (vme == NULL) {
         return false;
     }
+    if(vme->is_loaded) {
+        return true;
+    }
     uint8_t *kpage = palloc_get_page (PAL_USER);
     if (kpage == NULL)
         return false;
@@ -67,7 +70,7 @@ handle_mm_fault (struct vm_entry *vme) {
         case VM_BIN:
         {
             if (!load_file(kpage, vme)) {
-                printf("laodfilem");
+                // printf("laodfilem");
                 return false;
             }
             if (!install_page (vme->vaddr, kpage, vme->writable)) {
@@ -94,21 +97,26 @@ handle_mm_fault (struct vm_entry *vme) {
 bool
 load_file (void *kaddr, struct vm_entry *vme) {
     // printf("%d\n", vme->vaddr);
+
     if(vme->file == NULL) {
-        printf("read1\n");
+        // printf("read1\n");
         return false;
     }
     if((int)vme->offset < 0) {
-        printf("read2\n");
+        // printf("read2\n");
         return false;
     }
-
+    lock_acquire(&filesys_lock);
     file_seek (vme->file, vme->offset);
     int read = file_read(vme->file, kaddr, vme->read_bytes);
     if (read != (int) vme->read_bytes) {
-        printf("read\n");
+        // printf("read\n");
+        lock_release(&filesys_lock);
+
         return false;
     }
+    lock_release(&filesys_lock);
+
     ASSERT(vme->read_bytes + vme->zero_bytes == PGSIZE);
     memset (kaddr + vme->read_bytes, 0, vme->zero_bytes);
     vme->is_loaded = true;

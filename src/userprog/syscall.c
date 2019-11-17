@@ -9,6 +9,7 @@
 #include "userprog/process.h"
 #include <syscall-nr.h>
 #include "filesys/file.h"
+#include "vm/page.h"
 
 
 typedef int pid_t;
@@ -29,7 +30,6 @@ void sys_close (int fd);
 
 struct vm_entry *check_address(void *address);
 static void syscall_handler (struct intr_frame *);
-struct lock *filesys_lock;
 
 struct file 
   {
@@ -102,12 +102,14 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_READ:
     {
       get_arg(f->esp, &arg, 3);
+      check_valid_buffer((void *) arg[1], (unsigned) arg[2], true);
       f->eax = sys_read(arg[0], arg[1], arg[2]);
       break;
     }
     case SYS_WRITE:
     {
       get_arg(f->esp, &arg, 3);
+      check_valid_buffer((void *) arg[1], (unsigned) arg[2], true);
       f->eax = sys_write(arg[0], arg[1], arg[2]);
       break;
     }
@@ -178,10 +180,10 @@ sys_open(const char *file) {
   if (file == NULL) {
     sys_exit(-1);
   }
-  // lock_acquire(&filesys_lock);
+  lock_acquire(&filesys_lock);
   struct file *f = filesys_open(file);
   if (f == NULL) {
-    // lock_release(&filesys_lock);
+    lock_release(&filesys_lock);
     return -1;
   }
   else {
@@ -189,7 +191,7 @@ sys_open(const char *file) {
       file_deny_write(f);
     }
     int fd = process_add_file(f);
-    // lock_release(&filesys_lock);
+    lock_release(&filesys_lock);
     return fd;
   }
 }
@@ -277,7 +279,6 @@ sys_close (int fd) {
   process_close_file(fd);
 }
 
-
 struct vm_entry*
 check_address(void *address) {
   struct thread *cur = thread_current();
@@ -288,19 +289,15 @@ check_address(void *address) {
   return find_vme(&cur->page_entry_list, address);
 }
 
-// struct vm_entry*
-// check_address(void *address) {
-//   struct thread *cur = thread_current();
-
-//   if (address < (void *)0x08048000 || address >= (void *)0xc0000000)
-//     {
-//       sys_exit(-1);
-//     }
-  
-//   return find_vme(&cur->page_entry_list, address);
-// }
-
-
+void
+check_valid_buffer (void * buffer, unsigned size, bool to_write) {
+  void *upage;
+  struct vm_entry *vme;
+  for (upage = pg_round_down(buffer);upage < buffer + size; upage += PGSIZE) {
+    vme = check_address(upage);
+    handle_mm_fault(vme);
+  }
+}
 
 void get_arg (void *esp, int *arg, int n)
 {

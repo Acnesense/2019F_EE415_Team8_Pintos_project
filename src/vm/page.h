@@ -6,9 +6,12 @@
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 
+
 #define VM_BIN 0
 #define VM_FILE 1
 #define VM_ANON 2
+struct lock *filesys_lock;
+
 
 struct vm_entry {
     uint8_t type;   /* VM_BIN, VM_FILE, VM_ANON type */
