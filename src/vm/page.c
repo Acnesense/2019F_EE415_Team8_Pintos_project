@@ -47,19 +47,23 @@ destroy_vme (struct list *page_entry_list) {
     struct vm_entry *vme;
     while(!list_empty(page_entry_list)) {
         e = list_begin(page_entry_list);
-        list_remove(e);
         vme = list_entry (e, struct vm_entry, page_entry_elem);
+        // printf("destroy vme : %d\n", vme->vaddr);
+        list_remove(e);
         free(vme);
     }
 }
 
 void
-destory_mmap_list (struct list *mmap_list) {
+destroy_mmap_list (struct list *mmap_list) {
+    struct thread *cur = thread_current ();
     struct list_elem *e;
     while(!list_empty(mmap_list)) {
+        // printf("\n\n 12345 \n\n");
         e = list_begin(mmap_list);
         struct mmap_file *mmap_f = list_entry (e, struct mmap_file, elem);
         destroy_vme(&mmap_f->vme_list);
+        list_remove(e);
     }
 }
 
