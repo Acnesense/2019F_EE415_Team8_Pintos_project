@@ -217,6 +217,7 @@ process_exit (void)
   //   printf("vme : %d\n", vme->vaddr);
   // }
 
+  destroy_mmap_list(&cur->mmap_list);
   destroy_vme(&cur->page_entry_list);
 
   pd = cur->pagedir;
@@ -567,12 +568,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
   struct thread *cur = thread_current();
-  // if(!list_empty(&cur->mmap_list)){
-  //   printf("\n\nthis list is not empty\n\n");
-  // }
-  // if(!list_empty(&cur->page_entry_list)){
-  //   printf("\n\nthis page list is not empty\n\n");
-  // }
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {

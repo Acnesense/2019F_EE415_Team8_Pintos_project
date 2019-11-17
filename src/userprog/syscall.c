@@ -361,6 +361,7 @@ sys_mmap (int *fd, void *addr) {
     vme->writable = true;
     vme->type = VM_FILE;
     vme->mmap = true;
+    // printf("%d\n", vme->vaddr);
 
     list_push_back(&(mmap_f->vme_list), &(vme->mmap_elem));
     list_push_back(&(cur->page_entry_list), &(vme->page_entry_elem));
@@ -371,6 +372,7 @@ sys_mmap (int *fd, void *addr) {
   list_push_back(&(cur->mmap_list), &(mmap_f->elem));
   lock_release(&filesys_lock);
 
+  
   return cur->max_mid;
 
 mmap_fail:
@@ -394,9 +396,6 @@ sys_munmap(int *mapid) {
     file_close(mmap_f->file);
     free(mmap_f);
   }
-
-
-
 }
 
 void
@@ -407,13 +406,14 @@ do_munmap(struct mmap_file *mmap_f) {
   while(!list_empty(&mmap_f->vme_list)) {
     mmap_e = list_begin (&mmap_f->vme_list);
     struct vm_entry *vme = list_entry(mmap_e, struct vm_entry, mmap_elem);
-    ASSERT(vme->is_loaded);
-    if (pagedir_is_dirty(cur->pagedir, vme->vaddr)){
-      lock_acquire(&filesys_lock);
-      file_write_at(vme->file, vme->vaddr, vme->read_bytes, vme->offset);
-      lock_release(&filesys_lock);
+    if (vme->is_loaded) {
+      if (pagedir_is_dirty(cur->pagedir, vme->vaddr)){
+        lock_acquire(&filesys_lock);
+        file_write_at(vme->file, vme->vaddr, vme->read_bytes, vme->offset);
+        lock_release(&filesys_lock);
+      }
+      pagedir_clear_page(cur->pagedir, vme->vaddr);
     }
-    pagedir_clear_page(cur->pagedir, vme->vaddr);
     list_remove(&vme->mmap_elem);
     list_remove(&vme->page_entry_elem);
     free(vme);

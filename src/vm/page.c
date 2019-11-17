@@ -57,11 +57,19 @@ void
 destroy_mmap_list (struct list *mmap_list) {
     struct thread *cur = thread_current ();
     struct list_elem *e;
+    struct list_elem *mmap_e;
+    struct vm_entry *vme;
     while(!list_empty(mmap_list)) {
         e = list_begin(mmap_list);
         struct mmap_file *mmap_f = list_entry (e, struct mmap_file, elem);
-        destroy_vme(&mmap_f->vme_list);
+
+        while(!list_empty(&mmap_f->vme_list)) {
+            mmap_e = list_begin(&mmap_f->vme_list);
+            vme = list_entry (mmap_e, struct vm_entry, mmap_elem);
+            list_remove(mmap_e);
+        }
         list_remove(e);
+        free(mmap_f);
     }
 }
 
