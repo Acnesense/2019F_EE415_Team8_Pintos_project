@@ -156,12 +156,12 @@ page_fault (struct intr_frame *f)
   
   if (is_user_vaddr(fault_addr)) {
    if (vme != NULL) {
-         if (!handle_mm_fault(vme)) {
-            sys_exit(-1);
-         }
+      if (!handle_mm_fault(vme)) {
+         sys_exit(-1);
+      }
    }
 
-      else if ((size_t) (PHYS_BASE - pg_round_down(fault_addr)) < MAX_STACK_SIZE) {
+   else if ((size_t) (PHYS_BASE - pg_round_down(fault_addr)) < MAX_STACK_SIZE) {
       if (!(expand_stack(fault_addr))) {
             sys_exit(-1);
       }

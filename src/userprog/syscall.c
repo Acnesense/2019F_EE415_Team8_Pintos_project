@@ -438,6 +438,9 @@ check_valid_buffer (void * buffer, unsigned size, bool to_write) {
 
   for (upage = pg_round_down(buffer);upage < buffer + size; upage += PGSIZE) {
     vme = check_address(upage);
+    if(vme == NULL) {
+      sys_exit(-1);
+    }
     handle_mm_fault(vme);
   }
 }
