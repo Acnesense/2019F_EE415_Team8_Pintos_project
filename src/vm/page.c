@@ -53,6 +53,17 @@ destroy_vme (struct list *page_entry_list) {
     }
 }
 
+void
+destory_mmap_list (struct list *mmap_list) {
+    struct list_elem *e;
+    while(!list_empty(mmap_list)) {
+        e = list_begin(mmap_list);
+        struct mmap_file *mmap_f = list_entry (e, struct mmap_file, elem);
+        destroy_vme(&mmap_f->vme_list);
+    }
+}
+
+
 bool
 handle_mm_fault (struct vm_entry *vme) {
     if (vme == NULL) {

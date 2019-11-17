@@ -118,6 +118,7 @@ struct thread
 #endif
     struct list mmap_list;
     struct list page_entry_list;
+    int max_mid;
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };

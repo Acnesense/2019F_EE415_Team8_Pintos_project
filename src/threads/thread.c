@@ -488,6 +488,7 @@ init_thread (struct thread *t, const char *name, int priority)
 
   list_init (&(t->mmap_list));
   list_init (&(t->page_entry_list));
+  t->max_mid = 0;
   intr_set_level (old_level);
 }
 

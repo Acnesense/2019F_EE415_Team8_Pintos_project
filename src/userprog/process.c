@@ -217,7 +217,8 @@ process_exit (void)
   //   printf("\n\nthis page list is not empty\n\n");
   // }
   destroy_vme(&cur->page_entry_list);
-  
+  destory_mmap_list(&cur->mmap_list);
+
   pd = cur->pagedir;
   if (pd != NULL) 
     {

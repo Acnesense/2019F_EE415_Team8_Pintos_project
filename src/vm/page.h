@@ -45,6 +45,7 @@ bool handle_mm_fault (struct vm_entry *vme);
 bool load_file (void *kaddr, struct vm_entry *vme);
 static bool install_page (void *upage, void *kpage, bool writable);
 void destory_mmap_list (struct list *mmap_list);
+void destory_mmap_list (struct list *mmap_list);
 // bool delete_vme (struct hash *vm, struct vm_entry *vme);
 // struct vm_entry *find_vme (void *vaddr);
 // void vm_destroy (struct hash *vm);
