@@ -360,6 +360,7 @@ sys_mmap (int *fd, void *addr) {
     vme->is_loaded = false;
     vme->writable = true;
     vme->type = VM_FILE;
+    vme->mmap = true;
 
     list_push_back(&(mmap_f->vme_list), &(vme->mmap_elem));
     list_push_back(&(cur->page_entry_list), &(vme->page_entry_elem));

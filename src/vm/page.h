@@ -19,6 +19,7 @@ struct vm_entry {
     bool writable;  /* if Ture, can write. else if false can`t */
 
     bool is_loaded;  /* flag for loading physical memory */
+    bool mmap; /* If Ture, vm entry is made in mmap function */
     struct file *file;  /* mapping file */
     struct list_elem mmap_elem;     /* element of mmap list */
     struct list_elem page_entry_elem;
