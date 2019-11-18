@@ -154,23 +154,31 @@ install_page (void *upage, void *kpage, bool writable)
 
 bool
 expand_stack (void *vaddr) {
-  uint8_t *kpage;
-  struct vm_entry *vme = malloc(sizeof(struct vm_entry));
+    // printf("expand stack\n");
 
-  vme->vaddr = pg_round_down(vaddr);
-  vme->is_loaded = false;
-  vme->type = VM_BIN;
-  insert_vme(&thread_current()->page_entry_list, vme);
-
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-  if (kpage != NULL) 
-    {
-      if (!(install_page (vme->vaddr, kpage, true))) {
-        palloc_free_page (kpage);
-        goto fail;
-      }
+    if ((size_t) (PHYS_BASE - pg_round_down(vaddr)) > MAX_STACK_SIZE) {
+        // printf("expand stack2\n");
+        return false;
     }
-  return true;
+
+    uint8_t *kpage;
+    struct vm_entry *vme = malloc(sizeof(struct vm_entry));
+
+    vme->vaddr = pg_round_down(vaddr);
+    vme->is_loaded = false;
+    vme->type = VM_BIN;
+    // printf("%d", vme->vaddr);
+    insert_vme(&thread_current()->page_entry_list, vme);
+
+    kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+    if (kpage != NULL) 
+        {
+        if (!(install_page (vme->vaddr, kpage, true))) {
+            palloc_free_page (kpage);
+            goto fail;
+        }
+    }
+    return true;
 fail:
-  return false;
+    return false;
 }

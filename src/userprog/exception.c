@@ -152,17 +152,18 @@ page_fault (struct intr_frame *f)
 
   struct thread *cur = thread_current();
   struct vm_entry *vme;
-  vme = find_vme(&cur->page_entry_list, fault_addr);
   
-  if (is_user_vaddr(fault_addr)) {
+  if (is_user_vaddr(fault_addr) && fault_addr > (void *)0x08048000) {
+   vme = find_vme(&cur->page_entry_list, fault_addr);
    if (vme != NULL) {
       if (!handle_mm_fault(vme)) {
          sys_exit(-1);
       }
    }
 
-   else if ((size_t) (PHYS_BASE - pg_round_down(fault_addr)) < MAX_STACK_SIZE) {
+   else if (fault_addr >= f->esp - 32) {
       if (!(expand_stack(fault_addr))) {
+
             sys_exit(-1);
       }
    }
