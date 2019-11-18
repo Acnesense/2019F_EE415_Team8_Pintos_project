@@ -157,8 +157,8 @@ expand_stack (void *vaddr) {
     // printf("expand stack\n");
 
     if ((size_t) (PHYS_BASE - pg_round_down(vaddr)) > MAX_STACK_SIZE) {
-        // printf("expand stack2\n");
-        return false;
+        sys_exit(-1);
+        goto fail;
     }
 
     uint8_t *kpage;
