@@ -301,10 +301,9 @@ sys_close (int fd) {
   process_close_file(fd);
 }
 
-// 
+// store vm entry structure for memory mapping
 int
 sys_mmap (int *fd, void *addr) {
-  // printf("%d", addr);
   if (addr == NULL || pg_ofs(addr) != 0)
     return -1;
   if (fd <= 1)
@@ -381,6 +380,8 @@ mmap_fail:
   return -1;
 }
 
+// getting the mapid (output of mmap) to parameter, unmapping vm_entry
+// remove and deallocate vmentry and list 
 void
 sys_munmap(int *mapid) {
   
@@ -422,6 +423,7 @@ do_munmap(struct mmap_file *mmap_f) {
 
 }
 
+// check the address is valid. return the vm_entry whose vaddr is address
 struct vm_entry*
 check_address(void *address) {
   struct thread *cur = thread_current();
@@ -432,6 +434,8 @@ check_address(void *address) {
   return find_vme(&cur->page_entry_list, address);
 }
 
+// check the address from buffer to buffer + size is valid with check address
+// for allocating memory handle vme
 void
 check_valid_buffer (void * buffer, unsigned size, bool to_write) {
   void *upage;
@@ -446,6 +450,7 @@ check_valid_buffer (void * buffer, unsigned size, bool to_write) {
   }
 }
 
+// get the parameter from esp
 void get_arg (void *esp, int *arg, int n)
 {
   int i;
