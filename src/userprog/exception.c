@@ -153,7 +153,7 @@ page_fault (struct intr_frame *f)
   struct thread *cur = thread_current();
   struct vm_entry *vme;
 //   printf("page fault");
-  if (is_user_vaddr(fault_addr) && fault_addr > (void *)0x08048000) {
+  if (is_user_vaddr(fault_addr) && fault_addr > (void *)0x08048000 && not_present) {
    vme = find_vme(&cur->page_entry_list, fault_addr);
    if (vme != NULL) {
       if (!handle_mm_fault(vme)) {
