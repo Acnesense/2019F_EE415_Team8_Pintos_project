@@ -95,9 +95,6 @@ start_process (void *file_name_)
   argc++;
   
   /* Initialize interrupt frame and load executable. */
-  // struct thread *cur = thread_current();
-  // struct hash *exam;
-  // hash_init(&cur->vm, NULL, NULL, NULL);
 
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;

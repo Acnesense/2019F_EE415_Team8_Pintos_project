@@ -6,11 +6,17 @@
 #include "userprog/process.h"
 
 
+/* 
+insert vme to page entry list in current thread
+*/
 void
 insert_vme (struct list *page_entry_list, struct vm_entry *vme) {
     list_push_back(page_entry_list, &vme->page_entry_elem);
 }
 
+/* 
+    delete vme to page entry list in current thread 
+*/
 bool
 delete_vme (struct list *page_entry_list, struct vm_entry *vme) {
     struct list_elem *e;
@@ -25,6 +31,12 @@ delete_vme (struct list *page_entry_list, struct vm_entry *vme) {
     }
     return false;
 }
+
+/* 
+    find vme which is matched with vaddr in page entry list
+    return vme if condition is true
+    otherwise, return NULL
+*/
 
 struct vm_entry *
 find_vme (struct list *page_entry_list, void *vaddr) {
@@ -41,6 +53,11 @@ find_vme (struct list *page_entry_list, void *vaddr) {
     return NULL;
 }
 
+/*
+    remove and deallocate all vmes in page entry list
+    this function is implemented in process exit
+*/
+
 void
 destroy_vme (struct list *page_entry_list) {
     struct list_elem *e;
@@ -53,6 +70,10 @@ destroy_vme (struct list *page_entry_list) {
     }
 }
 
+/*
+    remove and deallocate all vmes in mmap_list
+    this function is implemented in process exit
+*/
 void
 destroy_mmap_list (struct list *mmap_list) {
     struct thread *cur = thread_current ();
@@ -73,6 +94,11 @@ destroy_mmap_list (struct list *mmap_list) {
     }
 }
 
+/*
+    if user may accesed to unallocated physical memory,
+    this function is called mainly in page fault function.
+    there are three types of vme.
+*/
 
 bool
 handle_mm_fault (struct vm_entry *vme) {
@@ -114,6 +140,10 @@ handle_mm_fault (struct vm_entry *vme) {
     }
 }
 
+/*
+    load file to physical memory.
+*/
+
 bool
 load_file (void *kaddr, struct vm_entry *vme) {
     // printf("%d\n", vme->vaddr);
@@ -151,6 +181,11 @@ install_page (void *upage, void *kpage, bool writable)
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
 
+
+/*
+    Expand stack if there are no enough space of stack.
+    insert vme for stack to page entry list.
+*/      
 
 bool
 expand_stack (void *vaddr) {

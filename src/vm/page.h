@@ -6,16 +6,17 @@
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 
-
+// three types of vme
 #define VM_BIN 0
 #define VM_FILE 1
 #define VM_ANON 2
 
+// limited max stack size
 #define MAX_STACK_SIZE (1 << 23)
 
 struct lock *filesys_lock;
 
-
+// vm_entry is structure for storing the information of unallocated file
 struct vm_entry {
     uint8_t type;   /* VM_BIN, VM_FILE, VM_ANON type */
     void *vaddr;    /* virtual page number */
@@ -34,6 +35,7 @@ struct vm_entry {
     size_t swap_slot;
 };
 
+// mmap_file is for 
 struct mmap_file {
     int mapid;
     struct file *file;
