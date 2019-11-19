@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "threads/synch.h"
 #include "filesys/file.h"
+#include "lib/kernel/hash.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -108,6 +109,8 @@ struct thread
 	struct semaphore exit_lock;
 	struct semaphore load_lock;
 	int exit_status;
+	
+	struct hash vm;
 	
 	struct file *fdt[128];
 	int next_fd;

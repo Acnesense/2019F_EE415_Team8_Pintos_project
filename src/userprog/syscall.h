@@ -4,7 +4,7 @@
 struct lock filesys_lock;
 int syscall_exec(const char *);
 void syscall_exit(int);
-void check_addr(void *);
+struct vm_entry *check_addr(void *, void *);
 void syscall_init (void);
 
 #endif /* userprog/syscall.h */

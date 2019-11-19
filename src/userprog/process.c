@@ -90,6 +90,8 @@ start_process (void *file_name_)
   
   char * save_ptr;
   
+  vm_init(&thread_current()->vm); //initialize hash table.
+  
   cpy_file_name=malloc(256);
   strlcpy(cpy_file_name,file_name,strlen(file_name)+1);
   token=strtok_r(cpy_file_name," ", &save_ptr);
@@ -215,6 +217,8 @@ process_exit (void)
 	if(dum!=NULL) file_close(dum);
 	cur->fdt[i]=NULL;
   }
+  
+  vm_destroy(&cur->vm);
 	  
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -514,7 +518,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
-
+  struct file *file2= file_reopen(file);
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
@@ -524,30 +528,44 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-      /* Get a page of memory. */
-      uint8_t *kpage = palloc_get_page (PAL_USER);
-      if (kpage == NULL)
-        return false;
 
+      /* Get a page of memory. */
+//      uint8_t *kpage = palloc_get_page (PAL_USER);
+//      if (kpage == NULL)
+//        return false;
+//
       /* Load this page. */
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
-      memset (kpage + page_read_bytes, 0, page_zero_bytes);
+//      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
+//        {
+//          palloc_free_page (kpage);
+//          return false; 
+//        }
+//      memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
       /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable)) 
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
+//      if (!install_page (upage, kpage, writable)) 
+//        {
+//          palloc_free_page (kpage);
+//          return false; 
+//        }
+
+	  struct vm_entry * vme=malloc(sizeof(struct vm_entry));
+	  memset (vme, 0, sizeof (struct vm_entry));
+	  vme->type=VM_BIN;
+	  vme->vaddr=upage; 
+	  vme->writable=writable;
+	  vme->is_loaded=false; 
+	  vme->file=file2;
+	  vme->offset=ofs; 
+	  vme->read_bytes=(read_bytes < PGSIZE)? read_bytes:PGSIZE;
+	  vme->zero_bytes=PGSIZE-vme->read_bytes;
+	  insert_vme(&thread_current()->vm,vme);
 
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
+	  ofs += vme->read_bytes;
     }
   return true;
 }
@@ -559,17 +577,25 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
-
+  
+  struct vm_entry * vme=(struct vm_entry *) malloc(sizeof(struct vm_entry));
+  if(vme==NULL) return false;
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+      success = install_page (pg_round_down(
+			((uint8_t *) PHYS_BASE) - PGSIZE), kpage, true);
       if (success)
         *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }
-  return success;
+  vme->vaddr=pg_round_down(((uint8_t *) PHYS_BASE) - PGSIZE); 
+  vme->type=VM_ANON;
+  vme->writable=true;
+  vme->is_loaded=true; 
+  
+  return success=insert_vme(&thread_current()->vm,vme);
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel
@@ -590,4 +616,26 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+bool 
+handle_mm_fault(struct vm_entry * vme)
+{
+	void *kaddr=palloc_get_page(PAL_USER | PAL_ZERO);
+	switch(vme->type)
+	{
+		case VM_BIN :
+		case VM_FILE :
+			if(load_file(kaddr,vme))
+			{
+				if(install_page(vme->vaddr,kaddr,vme->writable))
+				{
+					vme->is_loaded=true;
+					return true;
+				}
+			}
+			return false;
+		case VM_ANON :
+			return true;
+	}
 }
