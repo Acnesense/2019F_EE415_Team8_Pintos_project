@@ -1,5 +1,5 @@
-#ifndef FILESYS_FILESYS_H
-#define FILESYS_FILESYS_H
+#ifndef FILESYS_CACHE_H
+#define FILESYS_CACHE_H
 
 #include <stdbool.h>
 #include "filesys/off_t.h"
@@ -17,4 +17,4 @@ bool filesys_create (const char *name, off_t initial_size);
 struct file *filesys_open (const char *name);
 bool filesys_remove (const char *name);
 
-#endif /* filesys/filesys.h */
+#endif
