@@ -50,37 +50,7 @@ bc_init(void) {
 //     lock_release(&buffer_table_lock);
 // }
 
-/*
-    Select victim buffer_head using clock algorithm.
-    If dirty of victim entry is true, flush it to disk.
-*/
 
-struct buffer_head*
-bc_select_victim (struct block *fs_device) {
-    int i = 0;
-    struct buffer_head *b_head;
-    
-    while(1) {
-        i = i % block_cache_size;
-        b_head = &buffer_table[i];
-        if (b_head->is_used == false) {
-            return b_head;
-        }
-        if (b_head->accessed == true) {
-            b_head->accessed = false;
-        }
-        else {
-            break;
-        }
-        i++;
-    }
-    if (b_head->dirty) {
-        bc_flush_entry(b_head, fs_device);
-    }
-    b_head->accessed = true;
-    b_head->is_used = false;
-    return b_head;
-}
 
 /*
     Return buffer_head whose sector number is same to input.
@@ -89,15 +59,13 @@ bc_select_victim (struct block *fs_device) {
 struct buffer_head*
 bc_lookup (block_sector_t sector) {
     int i;
-    struct buffer_head *b_head;
 
     for (i=0; i<block_cache_size; i++) {
         if (buffer_table[i].is_used) {
             continue;
         }
         if (buffer_table[i].sector == sector) {
-            b_head = &buffer_table[i];
-            return b_head;
+            return &buffer_table[i];
         }
     }
     return NULL;
@@ -111,7 +79,7 @@ bc_lookup (block_sector_t sector) {
 void
 bc_flush_entry (struct buffer_head *flush_entry, struct block *fs_device) {
     if (flush_entry->dirty) {
-        block_write (fs_device, flush_entry->dirty, flush_entry->data);
+        block_write (fs_device, flush_entry->sector, flush_entry->data);
         flush_entry->dirty = false;
     }
 }
@@ -131,6 +99,38 @@ bc_flush_all_entries (struct block *fs_device) {
 }
 
 /*
+    Select victim buffer_head using clock algorithm.
+    If dirty of victim entry is true, flush it to disk.
+*/
+
+struct buffer_head*
+bc_select_victim (struct block *fs_device) {
+    int i = 0;
+    struct buffer_head *b_head;
+    
+    while(1) {
+        i = i % block_cache_size;
+        b_head = &buffer_table[i];
+        if (b_head->is_used == false) {
+            return b_head;
+        }
+        // if (b_head->accessed == true) {
+        //     b_head->accessed = false;
+        // }
+        else {
+            break;
+        }
+        i++;
+    }
+    if (b_head->dirty) {
+        bc_flush_entry(b_head, fs_device);
+    }
+    // b_head->accessed = true;
+    b_head->is_used = false;
+    return b_head;
+}
+
+/*
     Firstly, search sector index in buffer table.
     If there is not, get buffer head of buffer entry for caching
     and read disk block data to buffer cache.
@@ -140,7 +140,7 @@ bc_flush_all_entries (struct block *fs_device) {
 
 void
 bc_read (block_sector_t sector_idx, void *buffer,
-int chunk_size, struct block *fs_device) {
+struct block *fs_device) {
     
     lock_acquire(&buffer_table_lock);
     // block_read(fs_device, sector_idx, buffer);
@@ -150,17 +150,47 @@ int chunk_size, struct block *fs_device) {
     if (b_head == NULL) {
         b_head = bc_select_victim(fs_device);
         
-        ASSERT(b_head != NULL);
-        ASSERT(b_head->is_used == false);
-
         b_head -> dirty = false;
         b_head -> is_used = true;
         b_head -> sector = sector_idx;
         block_read(fs_device, sector_idx, b_head->data);
+
     }
 
     b_head -> accessed = true;
     memcpy(buffer, b_head->data, BLOCK_SECTOR_SIZE);
+
+    lock_release(&buffer_table_lock);
+}
+
+/*
+    Firstly, search sector index in buffer table.
+    If there is not, get buffer head of buffer entry for caching
+    and write disk block data to buffer cache.
+    Copy disk block data to buffer.
+    Set flag of clock bit (accessed) to true.
+*/
+
+void
+bc_write (block_sector_t sector_idx, void *buffer,
+struct block *fs_device) {
+    
+    lock_acquire(&buffer_table_lock);
+    // block_write(fs_device, sector_idx, buffer);
+
+    struct buffer_head *b_head;
+    b_head = bc_lookup(sector_idx);
+    if (b_head == NULL) {
+        b_head = bc_select_victim(fs_device);
+        b_head -> is_used = true;
+        b_head -> sector = sector_idx;
+    }
+
+    b_head -> dirty = true;
+    b_head -> accessed = true;
+
+    memcpy(b_head->data, buffer, BLOCK_SECTOR_SIZE);
+    block_write(fs_device, sector_idx, b_head->data);
 
     lock_release(&buffer_table_lock);
 }

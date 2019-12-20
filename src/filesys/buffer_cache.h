@@ -26,6 +26,7 @@ struct buffer_head* bc_select_victim (struct block *fs_device);
 struct buffer_head* bc_lookup (block_sector_t sector);
 void bc_flush_entry (struct buffer_head *flush_entry, struct block *fs_device);
 void bc_flush_all_entries (struct block *fs_device);
-void bc_read (block_sector_t sector_idx, void *buffer, int chunk_size, struct block *fs_device);
+void bc_read (block_sector_t sector_idx, void *buffer, struct block *fs_device);
+void bc_write (block_sector_t sector_idx, void *buffer, struct block *fs_device);
 
 #endif
