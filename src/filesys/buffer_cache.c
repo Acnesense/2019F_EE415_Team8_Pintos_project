@@ -3,6 +3,7 @@
 #include "filesys/buffer_cache.h"
 #include "filesys/filesys.h"
 #include "threads/synch.h"
+#include "devices/block.h"
 
 // Size of block cache
 #define block_cache_size 64
@@ -56,23 +57,22 @@ bc_init(void) {
 
 struct buffer_head*
 bc_select_victim (struct block *fs_device) {
-    lock_acquire(&buffer_table_lock);
     int i = 0;
     struct buffer_head *b_head;
     
     while(1) {
-        for (i = 0; i < block_cache_size; i++) {
-            b_head = &buffer_table[i];
-            if (b_head->is_used == false) {
-                return b_head;
-            }
-            if (b_head->accessed == true) {
-                b_head->accessed = false;
-            }
-            else {
-                break;
-            }
+        i = i % block_cache_size;
+        b_head = &buffer_table[i];
+        if (b_head->is_used == false) {
+            return b_head;
         }
+        if (b_head->accessed == true) {
+            b_head->accessed = false;
+        }
+        else {
+            break;
+        }
+        i++;
     }
     if (b_head->dirty) {
         bc_flush_entry(b_head, fs_device);
@@ -88,18 +88,18 @@ bc_select_victim (struct block *fs_device) {
 
 struct buffer_head*
 bc_lookup (block_sector_t sector) {
-    lock_acquire(&buffer_table_lock);
     int i;
     struct buffer_head *b_head;
 
     for (i=0; i<block_cache_size; i++) {
+        if (buffer_table[i].is_used) {
+            continue;
+        }
         if (buffer_table[i].sector == sector) {
             b_head = &buffer_table[i];
-            lock_release(&buffer_table_lock);
             return b_head;
         }
     }
-    
     return NULL;
 }
 
@@ -125,40 +125,42 @@ bc_flush_all_entries (struct block *fs_device) {
     int i;
     for(i = 0; i<block_cache_size; i++) {
         if (buffer_table[i].dirty) {
-            bc_flush_entry(&buffer_table[i], struct block *fs_device);
+            bc_flush_entry(&buffer_table[i], fs_device);
         }
     }
 }
 
-// /*
-//     Firstly, search sector index in buffer table.
-//     If there is not, get buffer head of buffer entry for caching
-//     and read disk block data to buffer cache.
-//     Copy disk block data to buffer.
-//     Set flag of clock bit (accessed) to true.
-// */
+/*
+    Firstly, search sector index in buffer table.
+    If there is not, get buffer head of buffer entry for caching
+    and read disk block data to buffer cache.
+    Copy disk block data to buffer.
+    Set flag of clock bit (accessed) to true.
+*/
 
-// void
-// bc_read (block_sector_t sector_idx, void *buffer,
-// int chunk_size) {
+void
+bc_read (block_sector_t sector_idx, void *buffer,
+int chunk_size, struct block *fs_device) {
+    
+    lock_acquire(&buffer_table_lock);
+    // block_read(fs_device, sector_idx, buffer);
 
-//     lock_acquire(&buffer_table_lock);
-
-//     struct buffer_head *b_head;
-//     b_head = bc_lookup(sector_idx);
-//     if (b_head == NULL) {
-//         b_head = bc_select_victim();
+    struct buffer_head *b_head;
+    b_head = bc_lookup(sector_idx);
+    if (b_head == NULL) {
+        b_head = bc_select_victim(fs_device);
         
-//         ASSERT(b_head != NULL);
-//         ASSERT(b_head->is_used == false);
+        ASSERT(b_head != NULL);
+        ASSERT(b_head->is_used == false);
 
-//         b_head -> dirty = false;
-//         b_head -> is_used = true;
-//         b_head -> sector = sector_idx;
-//         block_read(fs_device, sector_idx, b_head->data);
-//     }
-//     b_head -> accessed = true;
-//     memcpy(buffer, b_head->data, chunk_size);
+        b_head -> dirty = false;
+        b_head -> is_used = true;
+        b_head -> sector = sector_idx;
+        block_read(fs_device, sector_idx, b_head->data);
+    }
 
-//     lock_release(&buffer_table_lock);
-// }
+    b_head -> accessed = true;
+    memcpy(buffer, b_head->data, BLOCK_SECTOR_SIZE);
+
+    lock_release(&buffer_table_lock);
+}
