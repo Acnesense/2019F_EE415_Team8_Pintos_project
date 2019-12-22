@@ -190,7 +190,7 @@ struct block *fs_device) {
     b_head -> accessed = true;
 
     memcpy(b_head->data, buffer, BLOCK_SECTOR_SIZE);
-    block_write(fs_device, sector_idx, b_head->data);
+    // block_write(fs_device, sector_idx, b_head->data);
 
     lock_release(&buffer_table_lock);
 }
